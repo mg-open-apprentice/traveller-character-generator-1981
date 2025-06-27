@@ -1,5 +1,16 @@
 import random
 
+def set_random_seed(seed=None):
+    """Set a random seed for reproducible results during testing"""
+    if seed is not None:
+        random.seed(seed)
+        print(f"Random seed set to: {seed}")
+    else:
+        # Use current time for truly random results
+        import time
+        random.seed(time.time())
+        print("Using random seed based on current time")
+
 class Character:
     def __init__(self):
         self.age = 18  # Starting age (Traveller standard)
@@ -82,6 +93,28 @@ class Character:
             checks = [
                 ('str', 9, 1), ('dex', 8, 1), ('end', 9, 1)  # Using 'end' to match your existing code
             ]
+        
+        for stat, target, loss in checks:
+            roll = self.roll_2d6()
+            if roll < target:
+                old_value = self.characteristics[stat]
+                self.characteristics[stat] = max(0, self.characteristics[stat] - loss)  # Prevent negative
+                actual_loss = old_value - self.characteristics[stat]
+                print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
+                effects.append(f"-{actual_loss} {stat.upper()}")
+            else:
+                print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
+        
+        return effects
+
+    def apply_advanced_aging_effects(self, age):
+        """Apply advanced aging effects for ages 66+"""
+        effects = []
+        
+        # Advanced aging affects STR, DEX, END, and INT
+        checks = [
+            ('str', 9, 2), ('dex', 9, 2), ('end', 9, 2), ('int', 9, 1)
+        ]
         
         for stat, target, loss in checks:
             roll = self.roll_2d6()
@@ -225,7 +258,7 @@ class Character:
         return survival_bonuses.get(career, {})
 
     @staticmethod
-    def check_survival(career, characteristics):
+    def check_survival(career, characteristics, death_rule_enabled=False):
         """Check if character survives the term"""
         required_roll = Character.survival_roll(career)
         roll = Character.roll_2d6()
@@ -239,8 +272,16 @@ class Character:
         total = roll + bonus
         survived = total >= required_roll
 
-        print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → {'SURVIVED' if survived else 'DIED'}")
-        return survived
+        if survived:
+            print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → SURVIVED")
+            return 'survived'
+        else:
+            if death_rule_enabled:
+                print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → DIED")
+                return 'died'
+            else:
+                print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → INJURED")
+                return 'injured'
 
     @staticmethod
     def reenlistment_roll(career):
@@ -249,20 +290,34 @@ class Character:
             'Navy': 6,
             'Marines': 6,
             'Army': 7,
-            'Scouts': 6,
+            'Scouts': 3,
             'Merchants': 4,
             'Others': 5
         }
         return reenlistment_targets.get(career, 5)
 
     @staticmethod
-    def attempt_reenlistment(career):
+    def attempt_reenlistment(career, age):
         """Attempt to reenlist for another term"""
         target = Character.reenlistment_roll(career)
         roll = Character.roll_2d6()
-        success = roll >= target
-        print(f"[Reenlistment Check] Career: {career} | Roll: {roll} (Need {target}) → {'APPROVED' if success else 'DENIED'}")
-        return success
+        
+        if roll == 12:
+            # Mandatory re-enlistment - always allowed regardless of age
+            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} → MANDATORY RE-ENLISTMENT!")
+            return 'mandatory'
+        elif age >= 46:
+            # Characters 46+ can only continue on roll of 12
+            print(f"[Reenlistment Check] Career: {career} | Age: {age} | Roll: {roll} → AGE LIMIT: MUST MUSTER OUT")
+            return 'denied'
+        elif roll < target:
+            # Re-enlistment denied
+            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} < {target} → RE-ENLISTMENT DENIED")
+            return 'denied'
+        else:
+            # Re-enlistment approved - character chooses to stay (for characters under 46)
+            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} ≥ {target} → RE-ENLISTMENT APPROVED (character chooses to stay)")
+            return 'approved'
 
     @staticmethod
     def get_random_name():
@@ -276,13 +331,15 @@ class Character:
         ]
         return random.choice(sci_fi_names)
 
-    def add_career_term(self, career, term_number):
+    def add_career_term(self, career, term_number, partial_term=False):
         """Add a career term to history"""
+        years_served = 2 if partial_term else 4
         self.career_history.append({
             'career': career,
             'term': term_number,
-            'age_start': self.age - 4,
-            'age_end': self.age
+            'age_start': self.age - years_served,
+            'age_end': self.age,
+            'partial_term': partial_term
         })
 
     def add_skill(self, skill_name, levels=1):
@@ -467,13 +524,20 @@ class Character:
         if self.career_history:
             print(f"\nCareer History:")
             for term in self.career_history:
-                print(f"  Term {term['term']}: {term['career']} (Age {term['age_start']}-{term['age_end']})")
+                if term.get('partial_term', False):
+                    # Calculate which term they were injured in
+                    injury_term = int(term['term'] + 0.5)  # Convert 0.5 to 1, 1.5 to 2, etc.
+                    print(f"  Injured Term {injury_term}: {term['career']} (Age {term['age_start']}-{term['age_end']})")
+                else:
+                    print(f"  Term {term['term']}: {term['career']} (Age {term['age_start']}-{term['age_end']})")
         if self.skill_acquisition_log:
             print(f"\nSkill Acquisition History:")
             for entry in self.skill_acquisition_log:
                 event_desc = {
                     'enlistment': 'Enlistment/Draft',
                     'commission': 'Commission',
+                    'commission_skill_roll': 'Commission Skill Roll',
+                    'promotion_skill_roll': 'Promotion Skill Roll',
                     'term_skill_roll': 'Term Skill Roll',
                     'rank_4': 'Rank 4 (Merchant First Officer)',
                     'rank_5': 'Rank 5 (Navy Captain)',
@@ -493,7 +557,7 @@ class Character:
         if self.aging_log:
             print(f"\nAging Effects History:")
             for entry in self.aging_log:
-                print(f"  Term {entry['term']} (Age {entry['age']}): {', '.join(entry['effects'])}")
+                print(f"  Term {entry['term']} (Age {entry['term']}): {', '.join(entry['effects'])}")
         print(f"{'='*50}\n")
 
     def grant_automatic_enlistment_skill(self, career):
@@ -532,7 +596,7 @@ class Character:
             print("  → Automatic skill: Revolver +1 (Marines commission)")
             if self.skill_acquisition_log:
                 self.skill_acquisition_log[-1]['event'] = 'commission'
-        # Navy does NOT get automatic skill on commission
+        # Navy and Merchants do NOT get automatic skills on commission - only skill rolls
 
     def grant_automatic_rank_skill(self, career, rank):
         """Grant automatic skill for specific ranks, only once per character/rank"""
@@ -564,6 +628,25 @@ class Character:
                 'skill': 'SOC',
                 'level': 1
             })
+
+    def calculate_mustering_out_rolls(self):
+        """Calculate number of mustering out rolls based on terms and rank"""
+        # Count full terms only (half terms don't count)
+        full_terms = int(self.terms_served)
+        term_rolls = full_terms
+        
+        # Rank-based rolls
+        rank_rolls = 0
+        if self.rank >= 1 and self.rank <= 2:
+            rank_rolls = 1
+        elif self.rank >= 3 and self.rank <= 4:
+            rank_rolls = 2
+        elif self.rank >= 5 and self.rank <= 6:
+            rank_rolls = 3
+        
+        total_rolls = term_rolls + rank_rolls
+        print(f"\n💰 Mustering Out Rolls: {term_rolls} term rolls + {rank_rolls} rank rolls = {total_rolls} total")
+        return total_rolls
 
 
 # --- TEST FUNCTIONS ---
@@ -598,7 +681,7 @@ def test_check_survival():
     survival_outcome = Character.check_survival(career, characteristics)
     print(f"Survival Outcome for {career}: {survival_outcome}")
 
-def run_full_character_generation():
+def run_full_character_generation(death_rule_enabled=False):
     """Run a complete character generation"""
     print("\n" + "="*60)
     print("TRAVELLER CHARACTER GENERATION")
@@ -634,91 +717,117 @@ def run_full_character_generation():
     eligible_for_promotion = final_career in ['Navy', 'Marines', 'Army', 'Merchants']
     # Track commission attempt eligibility (not in first term if drafted)
     commission_attempted = False
-    MAX_TERMS = 7
-    while c.terms_served < MAX_TERMS:
+    # Remove MAX_TERMS limit - characters can continue if they roll 12
+    while True:  # Continue until career ends naturally
         print(f"\n--- Term {c.terms_served + 1} in {final_career} ---")
         # Check survival
         survived = Character.check_survival(final_career, c.characteristics)
-        if not survived:
+        
+        # Handle different survival outcomes
+        if survived == 'died':
             print(f"\u2620\ufe0f  Died during term {c.terms_served + 1} in {final_career}. Final Age: {c.age}")
             break
-        # Complete the term
-        c.complete_term()
-        c.add_career_term(final_career, c.terms_served)
-        # Commission attempt (if not already commissioned, not first term if drafted, and eligible career)
-        commission_this_term = False
-        if eligible_for_commission and not c.commissioned and not c.drafted:
-            # Explicitly prevent commission for Scouts and Others
-            if final_career in ['Navy', 'Marines', 'Army', 'Merchants']:
-                commission_this_term = Character.check_commission(final_career, c.characteristics)
-                if commission_this_term:
-                    c.commissioned = True
-                    c.rank = 1
-                    print(f"[Commission] {final_career}: Commissioned as officer (Rank 1)")
-                    c.grant_automatic_commission_skill(final_career)
-                    # Skill roll for commission
-                    c.roll_for_skills(final_career, 1)
-                else:
-                    print(f"[Commission] {final_career}: Commission attempt FAILED.")
-                commission_attempted = True
-        # Promotion attempt (if commissioned, not at max promotions)
-        promotion_this_term = False
-        max_promos = MAX_PROMOTIONS.get(final_career, 0)
-        if eligible_for_promotion and c.commissioned and c.promotions < max_promos:
-            # Explicitly prevent promotion for Scouts and Others
-            if final_career in ['Navy', 'Marines', 'Army', 'Merchants']:
-                promotion_target = {'Navy': 8, 'Marines': 9, 'Army': 6, 'Merchants': 10}
-                roll = Character.roll_2d6()
-                target = promotion_target.get(final_career, 12)
-                modifier = 0
-                if final_career == 'Navy' and c.characteristics.get('edu', 0) >= 8:
-                    modifier += 1
-                elif final_career == 'Marines' and c.characteristics.get('int', 0) >= 8:
-                    modifier += 1
-                elif final_career == 'Army' and c.characteristics.get('edu', 0) >= 7:
-                    modifier += 1
-                elif final_career == 'Merchants' and c.characteristics.get('int', 0) >= 9:
-                    modifier += 1
-                success = (roll + modifier) >= target
-                print(f"[Promotion Check] {final_career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
-                if success:
-                    c.promotions += 1
-                    c.rank += 1
-                    print(f"[Promotion] {final_career}: Promoted to rank {c.rank}")
-                    # Grant automatic skill for specific ranks
-                    c.grant_automatic_rank_skill(final_career, c.rank)
-                    # Skill roll for promotion
-                    c.roll_for_skills(final_career, 1)
-        # Roll for term skills
-        if final_career == 'Scouts':
-            num_skills = 2
-        else:
-            num_skills = 2 if c.terms_served == 1 else 1
-        c.roll_for_skills(final_career, num_skills)
-        # Report aging effects for this term, if any
-        if c.aging_log and c.aging_log[-1]['term'] == c.terms_served:
-            effects = c.aging_log[-1]['effects']
-            print(f"\n\U0001F9B4 Aging effects this term: {', '.join(effects)}")
-        print(f"\n✅ Survived term {c.terms_served}. Age: {c.age}")
-        # Check if reached max terms
-        if c.terms_served >= MAX_TERMS:
-            print(f"\n\U0001F396\ufe0f  Reached maximum service limit ({MAX_TERMS} terms).")
+        elif survived == 'injured':
+            print(f"\u26d4\ufe0f  Injured during term {c.terms_served + 1} in {final_career}. Must muster out immediately.")
+            # Update age and terms first
+            c.age += 2  # Only 2 years served
+            c.terms_served += 0.5
+            # Then add career term with correct ages
+            c.add_career_term(final_career, c.terms_served, partial_term=True)
+            print(f"Final Age: {c.age}, Terms Served: {c.terms_served}")
             break
-        # Attempt reenlistment
-        reenlistment_success = Character.attempt_reenlistment(final_career)
-        if not reenlistment_success:
-            print(f"\U0001F51A Reenlistment denied. Career ends after {c.terms_served} terms at age {c.age}.")
-            break
-        # If drafted and successfully re-enlisted, change status to enlisted
-        if c.drafted and reenlistment_success:
-            print(f"[Status Change] {final_career}: Drafted → Enlisted (successful re-enlistment)")
-            c.drafted = False
+        else:  # survived == 'survived'
+            # Complete the term normally
+            c.complete_term()
+            c.add_career_term(final_career, c.terms_served)
+            
+            # Commission attempt (if not already commissioned, not first term if drafted, and eligible career)
+            commission_this_term = False
+            if eligible_for_commission and not c.commissioned and not c.drafted:
+                # Explicitly prevent commission for Scouts and Others
+                if final_career in ['Navy', 'Marines', 'Army', 'Merchants']:
+                    commission_this_term = Character.check_commission(final_career, c.characteristics)
+                    if commission_this_term:
+                        c.commissioned = True
+                        c.rank = 1
+                        print(f"[Commission] {final_career}: Commissioned as officer (Rank 1)")
+                        # Skill roll for commission
+                        c.roll_for_skills(final_career, 1)
+                    else:
+                        print(f"[Commission] {final_career}: Commission attempt FAILED.")
+                    commission_attempted = True
+            # Promotion attempt (if commissioned, not at max promotions)
+            promotion_this_term = False
+            max_promos = MAX_PROMOTIONS.get(final_career, 0)
+            if eligible_for_promotion and c.commissioned and c.promotions < max_promos:
+                # Explicitly prevent promotion for Scouts and Others
+                if final_career in ['Navy', 'Marines', 'Army', 'Merchants']:
+                    promotion_target = {'Navy': 8, 'Marines': 9, 'Army': 6, 'Merchants': 10}
+                    roll = Character.roll_2d6()
+                    target = promotion_target.get(final_career, 12)
+                    modifier = 0
+                    if final_career == 'Navy' and c.characteristics.get('edu', 0) >= 8:
+                        modifier += 1
+                    elif final_career == 'Marines' and c.characteristics.get('int', 0) >= 8:
+                        modifier += 1
+                    elif final_career == 'Army' and c.characteristics.get('edu', 0) >= 7:
+                        modifier += 1
+                    elif final_career == 'Merchants' and c.characteristics.get('int', 0) >= 9:
+                        modifier += 1
+                    success = (roll + modifier) >= target
+                    print(f"[Promotion Check] {final_career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
+                    if success:
+                        c.promotions += 1
+                        c.rank += 1
+                        print(f"[Promotion] {final_career}: Promoted to rank {c.rank}")
+                        # Grant automatic skill for specific ranks
+                        c.grant_automatic_rank_skill(final_career, c.rank)
+                        # Skill roll for promotion
+                        c.roll_for_skills(final_career, 1)
+            # Roll for term skills
+            if final_career == 'Scouts':
+                num_skills = 2
+            else:
+                num_skills = 2 if c.terms_served == 1 else 1
+            c.roll_for_skills(final_career, num_skills)
+            # Report aging effects for this term, if any
+            if c.aging_log and c.aging_log[-1]['term'] == c.terms_served:
+                effects = c.aging_log[-1]['effects']
+                print(f"\n\U0001F9B4 Aging effects this term: {', '.join(effects)}")
+            print(f"\n✅ Survived term {c.terms_served}. Age: {c.age}")
+            
+            # Attempt reenlistment
+            reenlistment_result = Character.attempt_reenlistment(final_career, c.age)
+            if reenlistment_result == 'denied':
+                print(f"\U0001F51A Reenlistment denied. Career ends after {c.terms_served} terms at age {c.age}.")
+                break
+            elif reenlistment_result == 'mandatory':
+                print(f"\U0001F4E5 Mandatory re-enlistment! Character must continue service.")
+                # Continue to next term regardless of term count
+            elif reenlistment_result == 'approved':
+                print(f"\U0001F4E5 Reenlistment approved. Continuing service.")
+                # Continue to next term
+            
+            # If drafted and successfully re-enlisted, change status to enlisted
+            if c.drafted and reenlistment_result in ['approved', 'mandatory']:
+                print(f"[Status Change] {final_career}: Drafted → Enlisted (successful re-enlistment)")
+                c.drafted = False
+    
     # Display final character sheet
     c.display_character_sheet()
+    
+    # Calculate mustering out rolls at the very end
+    c.calculate_mustering_out_rolls()
 
 if __name__ == "__main__":
-    # Run the full character generation
-    run_full_character_generation()
+    # Set the random seed for reproducible results
+    # Change this number to get different but reproducible results
+    # Set to None for truly random results
+    set_random_seed(None)  # Use seed=42 for testing, or seed=None for random
+    
+    # By default, injury rule is enabled (survival failures = injury)
+    # Set death_rule_enabled=True to enable death on survival failures
+    run_full_character_generation(death_rule_enabled=False)
     
     # Uncomment below to run individual tests
     # print("\n--- Testing Individual Components ---\n")
