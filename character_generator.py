@@ -40,7 +40,6 @@ class Character:
         # Check for aging effects
         aging_effects = self.check_aging()
         if aging_effects:
-            print(f"\U0001F4C9 Aging effects this term: {', '.join(aging_effects)}")
             self.aging_log.append({
                 'term': self.terms_served,  # The term just completed
                 'age': self.age,
@@ -82,7 +81,7 @@ class Character:
         # Check standard thresholds (34 - 62)
         for threshold in aging_thresholds:
             if previous_age < threshold <= current_age:
-                print(f"\n⏰ Aging check at age {threshold}:")
+#               print(f"\n⏰ Aging check at age {threshold}:")
                 # Log that we're performing an aging check
                 self.log_event('aging_threshold_check', {
                     'age': threshold,
@@ -109,7 +108,7 @@ class Character:
         if current_age >= advanced_aging_start:
             for age in range(max(66, ((previous_age // 4) + 1) * 4), current_age + 1, 4):
                 if age >= advanced_aging_start:
-                    print(f"\n⚰️  Advanced aging check at age {age}:")
+#                   print(f"\n⚰️  Advanced aging check at age {age}:")
                     # Log that we're performing an advanced aging check
                     self.log_event('aging_threshold_check', {
                         'age': age,
@@ -174,7 +173,7 @@ class Character:
                 old_value = self.characteristics[stat]
                 self.characteristics[stat] = max(0, self.characteristics[stat] - loss)  # Prevent negative
                 actual_loss = old_value - self.characteristics[stat]
-                print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
+#               print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
                 # Log individual aging check
                 self.log_event('aging_check', {
@@ -188,7 +187,7 @@ class Character:
                     'phase': 'standard'
                 })
             else:
-                print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
+#               print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
                 # Log individual aging check (no loss)
                 self.log_event('aging_check', {
                     'age': age,
@@ -218,7 +217,7 @@ class Character:
                 old_value = self.characteristics[stat]
                 self.characteristics[stat] = max(0, self.characteristics[stat] - loss)  # Prevent negative
                 actual_loss = old_value - self.characteristics[stat]
-                print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
+#                print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
                 # Log individual advanced aging check
                 self.log_event('aging_check', {
@@ -232,7 +231,7 @@ class Character:
                     'phase': 'advanced'
                 })
             else:
-                print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
+#                print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
                 # Log individual advanced aging check (no loss)
                 self.log_event('aging_check', {
                     'age': age,
@@ -391,14 +390,14 @@ class Character:
         survived = total >= required_roll
 
         if survived:
-            print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → SURVIVED")
+            print(f"❤️  [SURVIVAL] {career} | Roll: {roll}+{bonus}={total} (need {required_roll}) → SURVIVED")
             return 'survived'
         else:
             if death_rule_enabled:
-                print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → DIED")
+                print(f"💀 [SURVIVAL] {career} | Roll: {roll}+{bonus}={total} (need {required_roll}) → DIED")
                 return 'died'
             else:
-                print(f"[Survival Check] Career: {career} | Roll: {roll} + Bonus: {bonus} = {total} (Need {required_roll}) → INJURED")
+                print(f"🩹 [SURVIVAL] {career} | Roll: {roll}+{bonus}={total} (need {required_roll}) → INJURED")
                 return 'injured'
 
     @staticmethod
@@ -415,27 +414,46 @@ class Character:
         return reenlistment_targets.get(career, 5)
 
     @staticmethod
-    def attempt_reenlistment(career, age):
-        """Attempt to reenlist for another term"""
+    def attempt_reenlistment(career, age, preference='reenlist'):
+        """Attempt to reenlist for another term with character preference"""
         target = Character.reenlistment_roll(career)
         roll = Character.roll_2d6()
-        
+    
+        # Determine outcome based on preference and roll
         if roll == 12:
-            # Mandatory re-enlistment - always allowed regardless of age
-            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} → MANDATORY RE-ENLISTMENT!")
-            return 'mandatory'
-        elif age >= 46:
-            # Characters 46+ can only continue on roll of 12
-            print(f"[Reenlistment Check] Career: {career} | Age: {age} | Roll: {roll} → AGE LIMIT: MUST MUSTER OUT")
-            return 'denied'
-        elif roll < target:
-            # Re-enlistment denied
-            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} < {target} → RE-ENLISTMENT DENIED")
-            return 'denied'
+        # Roll of 12 is always mandatory retention
+            outcome = 'retained'
+            status_text = 'retained (mandatory)'
+            continue_career = True
+        elif preference == 'reenlist':
+        # Wants to stay
+            if roll >= target:
+                outcome = 'reenlisted'
+                status_text = 'reenlisted'
+                continue_career = True
+            else:
+                outcome = 'military-discharge'
+                status_text = 'military-discharge'
+                continue_career = False
+        elif preference in ['discharge', 'retire']:
+            # Wants to leave - gets their wish unless roll is 12
+            if roll == 12:
+                outcome = 'retained'
+                status_text = 'retained (mandatory)'
+                continue_career = True
+            else:
+                outcome = preference + 'd' if preference == 'discharge' else 'retired'
+                status_text = outcome
+                continue_career = False
+    
+    # Print the result
+        print(f"🔄 [REENLISTMENT] {career} | {preference} | Roll: {roll} (need {target}) → {status_text}")
+    
+    # Return values that match what the main loop expects
+        if continue_career:
+            return 'approved' if outcome == 'reenlisted' else 'mandatory'
         else:
-            # Re-enlistment approved - character chooses to stay (for characters under 46)
-            print(f"[Reenlistment Check] Career: {career} | Roll: {roll} ≥ {target} → RE-ENLISTMENT APPROVED (character chooses to stay)")
-            return 'approved'
+            return 'denied'
 
     @staticmethod
     def get_random_name():
@@ -599,7 +617,9 @@ class Character:
             
         success = (roll + modifier) >= target
         if success:
-            print(f"[Commission Check] Roll: {roll} + {modifier} = {roll + modifier} (Need {target}) → COMMISSIONED!")
+            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → COMMISSIONED (Rank 1)")
+        else:
+            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → FAILED")
         
         return success
 
@@ -721,7 +741,6 @@ class Character:
             rank_rolls = 3
         
         total_rolls = term_rolls + rank_rolls
-        print(f"\n💰 Mustering Out Rolls: {term_rolls} term rolls + {rank_rolls} rank rolls = {total_rolls} total")
         return total_rolls
 
     def display_skill_acquisitions_hierarchical(self):
@@ -850,7 +869,7 @@ class Character:
             return
         
         if output_format == 'text':
-            print(f"\n📚 Skills acquired this term:")
+            print(f"📚 [SKILLS]")
             for entry in current_term_skills:
                 event = entry['event'].upper()
                 table = entry['table']
@@ -866,45 +885,28 @@ class Character:
 
     def display_current_term_aging(self, output_format='text'):
         """Display aging effects for the current term"""
-        if not self.aging_log:
+        if output_format != 'text':
             return
-        
-        # Get aging effects for the current term
-        current_term_aging = [entry for entry in self.aging_log if entry['term'] == self.terms_served]
-        
-        if not current_term_aging:
-            return
-        
-        if output_format == 'text':
-            print(f"\n⏰ Aging effects this term:")
-            for entry in current_term_aging:
-                age = entry['age']
-                effects = entry['effects']
-                if effects:
-                    print(f"  Age {age}: {', '.join(effects)}")
+    
+        # Check for aging checks in the generation log (this captures all checkprint(f"🎖️ [Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")s, not just losses)
+        aging_checks = [event for event in self.generation_log 
+                  if event['event_type'] == 'aging_check' and event['term'] == self.terms_served]
+    
+        if aging_checks:
+            print(f"⏰ [AGEING]")
+            for check in aging_checks:
+                data = check['data']
+                stat = data['stat']
+                roll = data['roll']
+                target = data['target']
+                old_value = data['old_value']
+                new_value = data['new_value']
+                loss = data['loss']
+            
+                if loss > 0:
+                    print(f"  {stat}: {roll} < {target} → Lost {loss} point(s) ({old_value} → {new_value})") #
                 else:
-                    print(f"  Age {age}: No effects")
-            
-            # Also show the detailed aging checks from generation log
-            aging_checks = [event for event in self.generation_log 
-                          if event['event_type'] == 'aging_check' and event['term'] == self.terms_served]
-            
-            if aging_checks:
-                print(f"  Aging checks:")
-                for check in aging_checks:
-                    data = check['data']
-                    stat = data['stat']
-                    roll = data['roll']
-                    target = data['target']
-                    old_value = data['old_value']
-                    new_value = data['new_value']
-                    loss = data['loss']
-                    phase = data['phase']
-                    
-                    if loss > 0:
-                        print(f"    {stat}: {roll} < {target} → Lost {loss} point(s) ({old_value} → {new_value})")
-                    else:
-                        print(f"    {stat}: {roll} ≥ {target} → No loss")
+                    print(f"  {stat}: {roll} ≥ {target} → No loss")
 
     def roll_mustering_out(self, career, gambling_skill=0, output_format='text'):
         """Perform mustering out rolls according to classic Traveller rules."""
@@ -948,7 +950,7 @@ class Character:
         rank_bonus = 1 if self.rank >= 5 else 0
 
         if output_format == 'text':
-            print(f'\nMUSTERING OUT: {total_rolls} rolls ({cash_rolls} cash, {benefit_rolls} benefits)')
+            print(f'\n💰 [MUSTERING OUT]: {career} |{total_rolls} rolls ({cash_rolls} cash, {benefit_rolls} benefits)')
 
         for i in range(cash_rolls):
             roll = random.randint(1, 6) + rank_bonus + gambling_skill
@@ -956,7 +958,7 @@ class Character:
             amount = cash_table.get(roll, 0)
             cash_total += amount
             if output_format == 'text':
-                print(f'  Cash Roll {i+1}: {roll} → Cr{amount:,}')
+                print(f' [cash] Roll {i+1}: {roll} → Cr{amount:,}')
             # Log cash roll
             self.log_event('mustering_out_cash_roll', {
                 'roll_number': i + 1,
@@ -974,7 +976,7 @@ class Character:
             roll = min(7, roll)
             benefit = benefit_table.get(roll, 'Low Psg')
             if output_format == 'text':
-                print(f'  Benefit Roll {i+1}: {roll} → {benefit}')
+                print(f' [benefit] Roll {i+1}: {roll} → {benefit}')
             # Log benefit roll
             self.log_event('mustering_out_benefit_roll', {
                 'roll_number': i + 1,
@@ -1049,14 +1051,15 @@ class Character:
         })
 
         if output_format == 'text':
-            print(f'\nFinal Mustering Out:')
-            print(f'  Cash: Cr{cash_total:,}')
-            if char_boosts:
-                print('  Characteristic Boosts:', ', '.join(f'{k.upper()} +{v}' for k, v in char_boosts.items()))
-            if items:
-                print('  Items:', ', '.join(items))
-            else:
-                print('  Items: None')
+        # Build summary parts
+            summary_parts = [f'Cr{cash_total:,} cash']
+        if char_boosts:
+            boosts_str = ', '.join(f'{k.upper()} +{v}' for k, v in char_boosts.items())
+            summary_parts.append(f'{boosts_str} boosts')
+        if items:
+            summary_parts.append(f'{", ".join(items)} items')
+    
+        print(f'✅ [MUSTERING OUT] {career} | {", ".join(summary_parts)}')
 
 
 # --- TEST FUNCTIONS ---
@@ -1263,8 +1266,7 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
     career, status, required_roll, roll, modifier = Character.attempt_enlistment(c.characteristics, service_choice)
     
     if output_format == 'text':
-        print(f"Roll: {roll} + Modifier: {modifier} = {roll + modifier}")
-        print(f"Needed: {required_roll} → Result: {status.upper()} as {career}")
+        print(f"🎯 [ENLISTMENT] {service_choice} | Roll: {roll}+{modifier}={roll + modifier} (need {required_roll}) → {status.upper()} as {career}")
     
     # Log enlistment result
     c.log_event('enlistment_result', {
@@ -1277,12 +1279,11 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
         'total': roll + modifier
     })
     
-    if status == "drafted":
-        if output_format == 'text':
-            print(f"Failed enlistment, drafted into: {career}")
+    if status == "drafted":          
         c.drafted = True
     
     c.career = career
+    print()
     # Grant automatic skill for enlistment/draft
     c.grant_automatic_enlistment_skill(career, output_format)
     
@@ -1355,15 +1356,11 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                     if commission_this_term:
                         c.commissioned = True
                         c.rank = 1
-                        if output_format == 'text':
-                            print(f"[Commission] {career}: Commissioned as officer (Rank 1)")
                         c.log_event('commission', {
                             'career': career,
                             'rank': c.rank
                         })
                     else:
-                        if output_format == 'text':
-                            print(f"[Commission] {career}: Commission attempt FAILED.")
                         c.log_event('commission_failed', {
                             'career': career
                         })
@@ -1391,12 +1388,10 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                         modifier += 1
                     success = (roll + modifier) >= target
                     if output_format == 'text':
-                        print(f"🎖️ [Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
+                        print(f"⭐ [PROMOTION] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
                     if success:
                         c.promotions += 1
                         c.rank += 1
-                        if output_format == 'text':
-                            print(f"🎖️ [Promotion] {career}: Promoted to rank {c.rank}")
                         c.log_event('promotion', {
                             'career': career,
                             'rank': c.rank,
@@ -1436,17 +1431,17 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
             # Report skills
             c.display_current_term_skills(output_format)
             
-            # 4. Check aging effects
-            # (aging is already checked in complete_term())
-            
-            # 5. Report aging effects
+            # Report aging effects
             c.display_current_term_aging(output_format)
-            
+
             if output_format == 'text':
-                print(f"\n✅ Survived term {c.terms_served}. Age: {c.age}")
-            
-            # 5. Roll to re-enlist
-            reenlistment_result = Character.attempt_reenlistment(career, c.age)
+                print(f"✅ [TERM COMPLETED] Term: {c.terms_served}. Age: {c.age}")
+
+            # Roll to re-enlist
+            if output_format == 'text':
+                preference = 'reenlist'
+                reenlistment_result = Character.attempt_reenlistment(career, c.age, preference)
+
             c.log_event('reenlistment_attempt', {
                 'career': career,
                 'age': c.age,
@@ -1456,18 +1451,18 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
             # Report outcome of re-enlistment attempt
             if reenlistment_result == 'denied':
                 if output_format == 'text':
-                    print(f"🔄 Reenlistment denied. Career ends after {c.terms_served} terms at age {c.age}.")
+                    pass
+            #       print(f"🔄 Reenlistment denied. Career ends after {c.terms_served} terms at age {c.age}.")
                 break
             elif reenlistment_result == 'mandatory':
-                if output_format == 'text':
-                    print(f"📋 Mandatory re-enlistment! Character must continue service.")
                 # Continue to next term regardless of term count
+                pass             # Continue to next term regardless of term count
             elif reenlistment_result == 'approved':
-                if output_format == 'text':
-                    print(f"✅ Reenlistment approved. Continuing service.")
                 # Continue to next term
+                pass
+        
             
-            # If drafted and successfully re-enlisted, change status to enlisted
+         # If drafted and successfully re-enlisted, change status to enlisted
             if c.drafted and reenlistment_result in ['approved', 'mandatory']:
                 if output_format == 'text':
                     print(f"[Status Change] {career}: Drafted → Enlisted (successful re-enlistment)")
