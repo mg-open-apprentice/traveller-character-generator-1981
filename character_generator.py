@@ -46,6 +46,12 @@ class Character:
                 'age': self.age,
                 'effects': aging_effects
             })
+            # Log aging event in generation log
+            self.log_event('aging', {
+                'term': self.terms_served,
+                'age': self.age,
+                'effects': aging_effects
+            })
         # Add aging effects to the latest term_log entry (if any)
         if self.term_log and self.term_log[-1]['term'] == self.terms_served:
             self.term_log[-1]['aging'] = aging_effects
@@ -63,21 +69,87 @@ class Character:
         current_age = self.age
     
         aging_effects = []
+        checks_performed = []  # Track all checks performed
+
+        # Log the aging check start
+        self.log_event('aging_check_start', {
+            'term': self.terms_served,
+            'previous_age': previous_age,
+            'current_age': current_age,
+            'age_increase': 4
+        })
 
         # Check standard thresholds (34 - 62)
         for threshold in aging_thresholds:
-            if previous_age < threshold < current_age:
+            if previous_age < threshold <= current_age:
                 print(f"\n⏰ Aging check at age {threshold}:")
+                # Log that we're performing an aging check
+                self.log_event('aging_threshold_check', {
+                    'age': threshold,
+                    'previous_age': previous_age,
+                    'current_age': current_age,
+                    'phase': 'standard',
+                    'threshold_crossed': True
+                })
+                checks_performed.append(threshold)
                 effects = self.apply_aging_effects(threshold)
                 aging_effects.extend(effects)
+            else:
+                # Log that this threshold was not crossed
+                self.log_event('aging_threshold_check', {
+                    'age': threshold,
+                    'previous_age': previous_age,
+                    'current_age': current_age,
+                    'phase': 'standard',
+                    'threshold_crossed': False,
+                    'reason': f'Threshold {threshold} not crossed (previous_age={previous_age}, current_age={current_age})'
+                })
 
         # Check advanced aging (66+)
         if current_age >= advanced_aging_start:
             for age in range(max(66, ((previous_age // 4) + 1) * 4), current_age + 1, 4):
                 if age >= advanced_aging_start:
                     print(f"\n⚰️  Advanced aging check at age {age}:")
+                    # Log that we're performing an advanced aging check
+                    self.log_event('aging_threshold_check', {
+                        'age': age,
+                        'previous_age': previous_age,
+                        'current_age': current_age,
+                        'phase': 'advanced',
+                        'threshold_crossed': True
+                    })
+                    checks_performed.append(age)
                     effects = self.apply_advanced_aging_effects(age)
                     aging_effects.extend(effects)
+        else:
+            # Log that advanced aging was not reached
+            self.log_event('aging_threshold_check', {
+                'age': advanced_aging_start,
+                'previous_age': previous_age,
+                'current_age': current_age,
+                'phase': 'advanced',
+                'threshold_crossed': False,
+                'reason': f'Advanced aging not reached (current_age={current_age} < {advanced_aging_start})'
+            })
+
+        # Log if no aging checks were performed this term
+        if not checks_performed:
+            self.log_event('aging_threshold_check', {
+                'age': current_age,
+                'previous_age': previous_age,
+                'current_age': current_age,
+                'phase': 'none',
+                'threshold_crossed': False,
+                'note': 'No aging thresholds crossed this term'
+            })
+
+        # Log the aging check completion
+        self.log_event('aging_check_complete', {
+            'term': self.terms_served,
+            'checks_performed': checks_performed,
+            'aging_effects': aging_effects,
+            'total_effects': len(aging_effects)
+        })
 
         return aging_effects
 
@@ -104,8 +176,30 @@ class Character:
                 actual_loss = old_value - self.characteristics[stat]
                 print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
+                # Log individual aging check
+                self.log_event('aging_check', {
+                    'age': age,
+                    'stat': stat.upper(),
+                    'roll': roll,
+                    'target': target,
+                    'old_value': old_value,
+                    'new_value': self.characteristics[stat],
+                    'loss': actual_loss,
+                    'phase': 'standard'
+                })
             else:
                 print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
+                # Log individual aging check (no loss)
+                self.log_event('aging_check', {
+                    'age': age,
+                    'stat': stat.upper(),
+                    'roll': roll,
+                    'target': target,
+                    'old_value': self.characteristics[stat],
+                    'new_value': self.characteristics[stat],
+                    'loss': 0,
+                    'phase': 'standard'
+                })
         
         return effects
 
@@ -126,8 +220,30 @@ class Character:
                 actual_loss = old_value - self.characteristics[stat]
                 print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
+                # Log individual advanced aging check
+                self.log_event('aging_check', {
+                    'age': age,
+                    'stat': stat.upper(),
+                    'roll': roll,
+                    'target': target,
+                    'old_value': old_value,
+                    'new_value': self.characteristics[stat],
+                    'loss': actual_loss,
+                    'phase': 'advanced'
+                })
             else:
                 print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
+                # Log individual advanced aging check (no loss)
+                self.log_event('aging_check', {
+                    'age': age,
+                    'stat': stat.upper(),
+                    'roll': roll,
+                    'target': target,
+                    'old_value': self.characteristics[stat],
+                    'new_value': self.characteristics[stat],
+                    'loss': 0,
+                    'phase': 'advanced'
+                })
         
         return effects
 
@@ -454,18 +570,6 @@ class Character:
         # Store skill rolls for this term in term_log
         self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'aging': []})
     
-    def get_commission_bonus_skills(self, career):
-        """Get automatic skills for being commissioned"""
-        commission_skills = {
-            'Navy': 'Social Standing +1',
-            'Marines': 'Revolver',
-            'Army': 'SMG',
-            'Scouts': None,  # No commission in Scouts
-            'Merchants': None,  # No commission in Merchants
-            'Others': None
-        }
-        return commission_skills.get(career)
-    
     @staticmethod
     def check_commission(career, characteristics):
         """Check if character receives commission (simplified)"""
@@ -539,9 +643,20 @@ class Character:
             self.display_skill_acquisitions_hierarchical()
         
         if self.aging_log:
-            print(f"\nAging Effects History:")
+            print(f"\n⏰ Aging Effects History:")
             for entry in self.aging_log:
-                print(f"  Term {entry['term']} (Age {entry['term']}): {', '.join(entry['effects'])}")
+                print(f"  Term {entry['term']} (Age {entry['age']}): {', '.join(entry['effects'])}")
+        
+        if self.mustering_out_benefits:
+            print(f"\nMustering Out Benefits:")
+            print(f"  Cash: Cr{self.mustering_out_benefits['cash']:,}")
+            if self.mustering_out_benefits.get('characteristic_boosts'):
+                boosts = self.mustering_out_benefits['characteristic_boosts']
+                print(f"  Characteristic Boosts: {', '.join(f'{k.upper()} +{v}' for k, v in boosts.items())}")
+            if self.mustering_out_benefits.get('items'):
+                print(f"  Items: {', '.join(self.mustering_out_benefits['items'])}")
+            else:
+                print(f"  Items: None")
         
         print(f"{'='*50}\n")
 
@@ -581,20 +696,14 @@ class Character:
         if career == 'Merchants' and rank == 4 and 'merchants_rank4' not in self.automatic_skills_granted:
             self.add_skill('Pilot', 1, f'rank_{rank}', 'automatic', None, f'Merchant rank {rank}')
             self.automatic_skills_granted.add('merchants_rank4')
-            # Display skills acquired this term
-            self.display_current_term_skills(output_format)
         elif career == 'Navy' and rank == 5 and 'navy_rank5' not in self.automatic_skills_granted:
             self.characteristics['soc'] += 1
             self.log_skill_acquisition(f'rank_{rank}', 'automatic', None, '+1 SOC', 1, f'Navy rank {rank}')
             self.automatic_skills_granted.add('navy_rank5')
-            # Display skills acquired this term
-            self.display_current_term_skills(output_format)
         elif career == 'Navy' and rank == 6 and 'navy_rank6' not in self.automatic_skills_granted:
             self.characteristics['soc'] += 1
             self.log_skill_acquisition(f'rank_{rank}', 'automatic', None, '+1 SOC', 1, f'Navy rank {rank}')
             self.automatic_skills_granted.add('navy_rank6')
-            # Display skills acquired this term
-            self.display_current_term_skills(output_format)
 
     def calculate_mustering_out_rolls(self):
         """Calculate number of mustering out rolls based on terms and rank"""
@@ -723,7 +832,8 @@ class Character:
             'aging_log': self.aging_log,
             'skill_acquisition_log': self.skill_acquisition_log,
             'generation_log': self.generation_log,
-            'mustering_out_rolls': self.calculate_mustering_out_rolls()
+            'mustering_out_rolls': self.calculate_mustering_out_rolls(),
+            'mustering_out_benefits': self.mustering_out_benefits
         }
         
         return character_data
@@ -753,6 +863,200 @@ class Character:
                     print(f"  [{event}] {table}: {skill} +{level} ({description})")
                 else:
                     print(f"  [{event}] {table}: {roll} → {skill} +{level} ({description})")
+
+    def display_current_term_aging(self, output_format='text'):
+        """Display aging effects for the current term"""
+        if not self.aging_log:
+            return
+        
+        # Get aging effects for the current term
+        current_term_aging = [entry for entry in self.aging_log if entry['term'] == self.terms_served]
+        
+        if not current_term_aging:
+            return
+        
+        if output_format == 'text':
+            print(f"\n⏰ Aging effects this term:")
+            for entry in current_term_aging:
+                age = entry['age']
+                effects = entry['effects']
+                if effects:
+                    print(f"  Age {age}: {', '.join(effects)}")
+                else:
+                    print(f"  Age {age}: No effects")
+            
+            # Also show the detailed aging checks from generation log
+            aging_checks = [event for event in self.generation_log 
+                          if event['event_type'] == 'aging_check' and event['term'] == self.terms_served]
+            
+            if aging_checks:
+                print(f"  Aging checks:")
+                for check in aging_checks:
+                    data = check['data']
+                    stat = data['stat']
+                    roll = data['roll']
+                    target = data['target']
+                    old_value = data['old_value']
+                    new_value = data['new_value']
+                    loss = data['loss']
+                    phase = data['phase']
+                    
+                    if loss > 0:
+                        print(f"    {stat}: {roll} < {target} → Lost {loss} point(s) ({old_value} → {new_value})")
+                    else:
+                        print(f"    {stat}: {roll} ≥ {target} → No loss")
+
+    def roll_mustering_out(self, career, gambling_skill=0, output_format='text'):
+        """Perform mustering out rolls according to classic Traveller rules."""
+        # 1. Calculate total rolls
+        total_rolls = int(self.terms_served)
+        if 1 <= self.rank <= 2:
+            total_rolls += 1
+        elif 3 <= self.rank <= 4:
+            total_rolls += 2
+        elif 5 <= self.rank <= 6:
+            total_rolls += 3
+
+        # 2. Decide how many cash rolls (max 3)
+        cash_rolls = min(3, total_rolls)
+        benefit_rolls = total_rolls - cash_rolls
+
+        # 3. Get tables
+        cash_table = {
+            'Navy':     {1: 1000, 2: 5000, 3: 5000, 4: 10000, 5: 20000, 6: 50000, 7: 50000},
+            'Marines':  {1: 2000, 2: 5000, 3: 5000, 4: 10000, 5: 20000, 6: 30000, 7: 40000},
+            'Army':     {1: 2000, 2: 5000, 3: 10000, 4: 10000, 5: 10000, 6: 20000, 7: 30000},
+            'Scouts':   {1: 20000, 2: 20000, 3: 30000, 4: 30000, 5: 50000, 6: 50000, 7: 50000},
+            'Merchant': {1: 1000, 2: 5000, 3: 10000, 4: 20000, 5: 20000, 6: 40000, 7: 40000},
+            'Other':    {1: 1000, 2: 5000, 3: 10000, 4: 10000, 5: 10000, 6: 50000, 7: 100000},
+        }
+        benefit_table = {
+            'Navy':     {1: 'Low Psg', 2: 'INT +1', 3: 'EDU +2', 4: 'Blade', 5: 'Travellers', 6: 'High Psg', 7: 'SOC +2'},
+            'Marines':  {1: 'Low Psg', 2: 'INT +2', 3: 'EDU +1', 4: 'Blade', 5: 'Traveller', 6: 'High Psg', 7: 'SOC +2'},
+            'Army':     {1: 'Low Psg', 2: 'INT +1', 3: 'EDU +2', 4: 'Gun', 5: 'High Psg', 6: 'Mid Psg', 7: 'SOC +1'},
+            'Scouts':   {1: 'Low Psg', 2: 'INT +2', 3: 'EDU +2', 4: 'Blade', 5: 'Gun', 6: 'Scout Ship'},
+            'Merchant': {1: 'Low Psg', 2: 'INT +1', 3: 'EDU +1', 4: 'Gun', 5: 'Blade', 6: 'Low Psg', 7: 'Free Trader'},
+            'Other':    {1: 'Low Psg', 2: 'INT +1', 3: 'EDU +1', 4: 'Gun', 5: 'High Psg', 6: '-'},
+        }
+        cash_table = cash_table.get(career, cash_table['Other'])
+        benefit_table = benefit_table.get(career, benefit_table['Other'])
+
+        # 4. Roll for cash
+        cash_total = 0
+        items = []
+        char_boosts = {}
+        rank_bonus = 1 if self.rank >= 5 else 0
+
+        if output_format == 'text':
+            print(f'\nMUSTERING OUT: {total_rolls} rolls ({cash_rolls} cash, {benefit_rolls} benefits)')
+
+        for i in range(cash_rolls):
+            roll = random.randint(1, 6) + rank_bonus + gambling_skill
+            roll = min(7, roll)  # Max table value is 7
+            amount = cash_table.get(roll, 0)
+            cash_total += amount
+            if output_format == 'text':
+                print(f'  Cash Roll {i+1}: {roll} → Cr{amount:,}')
+            # Log cash roll
+            self.log_event('mustering_out_cash_roll', {
+                'roll_number': i + 1,
+                'base_roll': roll - rank_bonus - gambling_skill,
+                'rank_bonus': rank_bonus,
+                'gambling_bonus': gambling_skill,
+                'total_roll': roll,
+                'amount': amount,
+                'career': career
+            })
+
+        # 5. Roll for benefits
+        for i in range(benefit_rolls):
+            roll = random.randint(1, 6) + rank_bonus
+            roll = min(7, roll)
+            benefit = benefit_table.get(roll, 'Low Psg')
+            if output_format == 'text':
+                print(f'  Benefit Roll {i+1}: {roll} → {benefit}')
+            # Log benefit roll
+            self.log_event('mustering_out_benefit_roll', {
+                'roll_number': i + 1,
+                'base_roll': roll - rank_bonus,
+                'rank_bonus': rank_bonus,
+                'total_roll': roll,
+                'benefit': benefit,
+                'career': career
+            })
+            # Apply characteristic boosts
+            if benefit.startswith('INT +'):
+                boost = int(benefit.split('+')[1])
+                char_boosts['int'] = char_boosts.get('int', 0) + boost
+                self.characteristics['int'] += boost
+                # Log characteristic boost
+                self.log_event('mustering_out_characteristic_boost', {
+                    'stat': 'INT',
+                    'boost': boost,
+                    'old_value': self.characteristics['int'] - boost,
+                    'new_value': self.characteristics['int'],
+                    'source': 'mustering_out_benefit'
+                })
+            elif benefit.startswith('EDU +'):
+                boost = int(benefit.split('+')[1])
+                char_boosts['edu'] = char_boosts.get('edu', 0) + boost
+                self.characteristics['edu'] += boost
+                # Log characteristic boost
+                self.log_event('mustering_out_characteristic_boost', {
+                    'stat': 'EDU',
+                    'boost': boost,
+                    'old_value': self.characteristics['edu'] - boost,
+                    'new_value': self.characteristics['edu'],
+                    'source': 'mustering_out_benefit'
+                })
+            elif benefit.startswith('SOC +'):
+                boost = int(benefit.split('+')[1])
+                char_boosts['soc'] = char_boosts.get('soc', 0) + boost
+                self.characteristics['soc'] += boost
+                # Log characteristic boost
+                self.log_event('mustering_out_characteristic_boost', {
+                    'stat': 'SOC',
+                    'boost': boost,
+                    'old_value': self.characteristics['soc'] - boost,
+                    'new_value': self.characteristics['soc'],
+                    'source': 'mustering_out_benefit'
+                })
+            elif benefit != '-':
+                items.append(benefit)
+                # Log item acquisition
+                self.log_event('mustering_out_item', {
+                    'item': benefit,
+                    'source': 'mustering_out_benefit'
+                })
+
+        self.mustering_out_benefits = {
+            'cash': cash_total,
+            'items': items,
+            'characteristic_boosts': char_boosts
+        }
+
+        # Log final mustering out summary
+        self.log_event('mustering_out_summary', {
+            'career': career,
+            'total_rolls': total_rolls,
+            'cash_rolls': cash_rolls,
+            'benefit_rolls': benefit_rolls,
+            'total_cash': cash_total,
+            'items': items,
+            'characteristic_boosts': char_boosts,
+            'rank_bonus': rank_bonus,
+            'gambling_skill': gambling_skill
+        })
+
+        if output_format == 'text':
+            print(f'\nFinal Mustering Out:')
+            print(f'  Cash: Cr{cash_total:,}')
+            if char_boosts:
+                print('  Characteristic Boosts:', ', '.join(f'{k.upper()} +{v}' for k, v in char_boosts.items()))
+            if items:
+                print('  Items:', ', '.join(items))
+            else:
+                print('  Items: None')
 
 
 # --- TEST FUNCTIONS ---
@@ -1042,7 +1346,7 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
             c.complete_term()
             c.add_career_term(career, c.terms_served)
             
-            # Commission attempt (if not already commissioned, not first term if drafted, and eligible career)
+            # 2.1 Commission attempt (if not already commissioned, not first term if drafted, and eligible career)
             commission_this_term = False
             if eligible_for_commission and not c.commissioned and not c.drafted:
                 # Explicitly prevent commission for Scouts and Others
@@ -1057,10 +1361,6 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                             'career': career,
                             'rank': c.rank
                         })
-                        # Grant automatic skill for commission
-                        c.grant_automatic_commission_skill(career, output_format)
-                        # Skill roll for commission
-                        c.roll_for_skills(career, 1, 'commission')
                     else:
                         if output_format == 'text':
                             print(f"[Commission] {career}: Commission attempt FAILED.")
@@ -1068,10 +1368,13 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                             'career': career
                         })
                     commission_attempted = True
-            # Promotion attempt (if commissioned, not at max promotions)
+            
+            # 2.2 Promotion attempt (if commissioned, not at max promotions)
             promotion_this_term = False
-            max_promos = MAX_PROMOTIONS.get(career, 0)
-            if eligible_for_promotion and c.commissioned and c.promotions < max_promos:
+            max_rank = {'Navy': 6, 'Marines': 6, 'Army': 6, 'Merchants': 5}
+            current_max_rank = max_rank.get(career, 0)
+            
+            if eligible_for_promotion and c.commissioned and c.rank < current_max_rank:
                 # Explicitly prevent promotion for Scouts and Others
                 if career in ['Navy', 'Marines', 'Army', 'Merchants']:
                     promotion_target = {'Navy': 8, 'Marines': 9, 'Army': 6, 'Merchants': 10}
@@ -1088,12 +1391,12 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                         modifier += 1
                     success = (roll + modifier) >= target
                     if output_format == 'text':
-                        print(f"[Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
+                        print(f"🎖️ [Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")
                     if success:
                         c.promotions += 1
                         c.rank += 1
                         if output_format == 'text':
-                            print(f"[Promotion] {career}: Promoted to rank {c.rank}")
+                            print(f"🎖️ [Promotion] {career}: Promoted to rank {c.rank}")
                         c.log_event('promotion', {
                             'career': career,
                             'rank': c.rank,
@@ -1101,10 +1404,7 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                             'modifier': modifier,
                             'target': target
                         })
-                        # Grant automatic skill for specific ranks
-                        c.grant_automatic_rank_skill(career, c.rank, output_format)
-                        # Skill roll for promotion
-                        c.roll_for_skills(career, 1, 'promotion')
+                        promotion_this_term = True
                     else:
                         c.log_event('promotion_failed', {
                             'career': career,
@@ -1112,23 +1412,40 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                             'modifier': modifier,
                             'target': target
                         })
-            # Roll for term skills
+            
+            # 3. Determine skills (service + commission + promotion + automatic)
+            # 3a) Service skills
             if career == 'Scouts':
                 num_skills = 2
             else:
                 num_skills = 2 if c.terms_served == 1 else 1
             c.roll_for_skills(career, num_skills)
-            # Display skills acquired this term
+            
+            # 3b) Commission skills
+            if commission_this_term:
+                c.grant_automatic_commission_skill(career, output_format)
+                c.roll_for_skills(career, 1, 'commission')
+            
+            # 3c) Promotion skills
+            if promotion_this_term:
+                c.grant_automatic_rank_skill(career, c.rank, output_format)
+                c.roll_for_skills(career, 1, 'promotion')
+            
+            # 3d) Automatic skills (by virtue of rank) - already handled in grant_automatic_rank_skill
+            
+            # Report skills
             c.display_current_term_skills(output_format)
-            # Report aging effects for this term, if any
-            if c.aging_log and c.aging_log[-1]['term'] == c.terms_served:
-                effects = c.aging_log[-1]['effects']
-                if output_format == 'text':
-                    print(f"\n\U0001F9B4 Aging effects this term: {', '.join(effects)}")
+            
+            # 4. Check aging effects
+            # (aging is already checked in complete_term())
+            
+            # 5. Report aging effects
+            c.display_current_term_aging(output_format)
+            
             if output_format == 'text':
                 print(f"\n✅ Survived term {c.terms_served}. Age: {c.age}")
             
-            # Attempt reenlistment
+            # 5. Roll to re-enlist
             reenlistment_result = Character.attempt_reenlistment(career, c.age)
             c.log_event('reenlistment_attempt', {
                 'career': career,
@@ -1136,6 +1453,7 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                 'result': reenlistment_result
             })
             
+            # Report outcome of re-enlistment attempt
             if reenlistment_result == 'denied':
                 if output_format == 'text':
                     print(f"🔄 Reenlistment denied. Career ends after {c.terms_served} terms at age {c.age}.")
@@ -1167,7 +1485,11 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
         'term_rolls': int(c.terms_served),
         'rank_rolls': mustering_rolls - int(c.terms_served)
     })
-    
+
+    # Perform mustering out process
+    gambling_skill = c.skills.get('Gambling', 0)
+    c.roll_mustering_out(career, gambling_skill=gambling_skill, output_format=output_format)
+
     if output_format == 'json':
         return c.to_json()
     else:
