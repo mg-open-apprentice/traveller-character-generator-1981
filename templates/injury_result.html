@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Injury</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #000;
+            color: #ff0000;
+        }
+        .container {
+            background-color: #000;
+            padding: 30px;
+            border: 2px solid #ff0000;
+            border-radius: 5px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff0000;
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        .result {
+            border: 1px solid #ff0000;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: #110000;
+        }
+        .result h3 {
+            color: #ff0000;
+            margin-top: 0;
+        }
+        .result p {
+            color: #ccc;
+        }
+        .warning {
+            color: #ffaa00;
+        }
+        .btn {
+            background-color: #000;
+            color: #ff0000;
+            border: 2px solid #ff0000;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-family: 'Arial', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #ff0000;
+            color: #000;
+            box-shadow: 0 0 20px #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🩹 CHARACTER INJURY</h1>
+        
+        <div class="result">
+            <h3>Your character was injured!</h3>
+            <p class="warning">While serving in the {{ career }}, your character suffered a serious injury.</p>
+            <p>Age: {{ age }}</p>
+            <p>This was a partial term due to the injury.</p>
+            <p>Your character must now muster out or attempt to continue their career.</p>
+        </div>
+        
+        <a href="/muster_out" class="btn">MUSTER OUT</a>
+        <a href="/" class="btn" style="margin-top: 10px;">START OVER</a>
+    </div>
+</body>
+</html> 

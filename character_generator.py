@@ -271,7 +271,9 @@ class Character:
     @staticmethod
     def create_hex_string(hex_values):
         """Create UPP (Universal Personality Profile) string"""
-        return ''.join(hex_values.values())
+        # Use the correct order: STR, DEX, END, INT, EDU, SOC
+        characteristic_order = ['str', 'dex', 'end', 'int', 'edu', 'soc']
+        return ''.join(hex_values[attr] for attr in characteristic_order)
 
     # --- CAREER LOGIC ---
 
@@ -373,6 +375,85 @@ class Character:
             'Others': {'int': (9, 2)}
         }
         return survival_bonuses.get(career, {})
+
+    @staticmethod
+    def check_survival_detailed(career, characteristics, death_rule_enabled=False):
+        """Check if character survives the term with detailed roll information"""
+        required_roll = Character.survival_roll(career)
+        roll = Character.roll_2d6()
+        bonus = 0
+        bonus_details = []
+
+        bonuses = Character.survival_bonuses(career)
+        for attr, (req, bns) in bonuses.items():
+            if characteristics.get(attr, 0) >= req:
+                bonus += bns
+                bonus_details.append(f"{attr.upper()} {characteristics.get(attr, 0)}≥{req} (+{bns})")
+
+        total = roll + bonus
+        survived = total >= required_roll
+
+        result = {
+            'roll': roll,
+            'bonus': bonus,
+            'bonus_details': bonus_details,
+            'total': total,
+            'required': required_roll,
+            'survived': survived,
+            'outcome': 'survived' if survived else ('died' if death_rule_enabled else 'injured')
+        }
+
+        return result
+
+    @staticmethod
+    def check_commission_detailed(career, characteristics):
+        """Check if character receives commission with detailed roll information"""
+        if career in ['Scouts', 'Others']:
+            return {
+                'applicable': False,
+                'reason': f'{career} does not have commissions'
+            }
+            
+        commission_target = {
+            'Navy': 10,
+            'Marines': 9,
+            'Army': 5,
+            'Merchants': 4
+        }
+        
+        roll = Character.roll_2d6()
+        target = commission_target.get(career, 12)
+        
+        # Add modifiers based on characteristics
+        modifier = 0
+        modifier_details = []
+        if career == 'Navy' and characteristics.get('soc', 0) >= 9:
+            modifier += 1
+            modifier_details.append(f"SOC {characteristics.get('soc', 0)}≥9 (+1)")
+        elif career == 'Marines' and characteristics.get('edu', 0) >= 7:
+            modifier += 1
+            modifier_details.append(f"EDU {characteristics.get('edu', 0)}≥7 (+1)")
+        elif career == 'Army' and characteristics.get('end', 0) >= 7:
+            modifier += 1
+            modifier_details.append(f"END {characteristics.get('end', 0)}≥7 (+1)")
+        elif career == 'Merchants' and characteristics.get('int', 0) >= 9:
+            modifier += 1
+            modifier_details.append(f"INT {characteristics.get('int', 0)}≥9 (+1)")
+            
+        total = roll + modifier
+        success = total >= target
+        
+        result = {
+            'applicable': True,
+            'roll': roll,
+            'modifier': modifier,
+            'modifier_details': modifier_details,
+            'total': total,
+            'target': target,
+            'success': success
+        }
+        
+        return result
 
     @staticmethod
     def check_survival(career, characteristics, death_rule_enabled=False):
@@ -555,10 +636,11 @@ class Character:
             'advanced_education': advanced_education
         }
     
-    def roll_for_skills(self, career, num_skills=2, reason='term'):
-        """Roll for skills during a term with enhanced logging"""
+    def roll_for_skills_detailed(self, career, num_skills=2, reason='term'):
+        """Roll for skills during a term with detailed logging and return results"""
         tables = self.get_skill_tables(career)
         skill_rolls_this_term = []
+        detailed_rolls = []
         
         for i in range(num_skills):
             # All characters may roll on personal, service, and advanced
@@ -566,12 +648,25 @@ class Character:
             # Only add advanced_education if EDU >= 8
             if self.characteristics.get('edu', 0) >= 8:
                 available_tables.append('advanced_education')
+            
             # Choose a random table
             chosen_table = random.choice(available_tables)
             table = tables[chosen_table][career]
+            
             # Roll on the table
             roll = random.randint(1, 6)
             result = table.get(roll, 'No skill')
+            
+            # Record detailed roll information
+            roll_detail = {
+                'roll_number': i + 1,
+                'table': chosen_table,
+                'roll': roll,
+                'result': result,
+                'table_contents': table
+            }
+            detailed_rolls.append(roll_detail)
+            
             skill_rolls_this_term.append((chosen_table, result))
             
             # Apply the result
@@ -587,41 +682,8 @@ class Character:
         
         # Store skill rolls for this term in term_log
         self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'aging': []})
-    
-    @staticmethod
-    def check_commission(career, characteristics):
-        """Check if character receives commission (simplified)"""
-        if career in ['Scouts', 'Others']:
-            return False
-            
-        commission_target = {
-            'Navy': 10,
-            'Marines': 9,
-            'Army': 5,
-            'Merchants': 4
-        }
         
-        roll = Character.roll_2d6()
-        target = commission_target.get(career, 12)
-        
-        # Add modifiers based on characteristics
-        modifier = 0
-        if career == 'Navy' and characteristics.get('soc', 0) >= 9:
-            modifier += 1
-        elif career == 'Marines' and characteristics.get('edu', 0) >= 7:
-            modifier += 1
-        elif career == 'Army' and characteristics.get('end', 0) >= 7:
-            modifier += 1
-        elif career == 'Merchants' and characteristics.get('int', 0) >= 9:
-            modifier += 1
-            
-        success = (roll + modifier) >= target
-        if success:
-            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → COMMISSIONED (Rank 1)")
-        else:
-            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → FAILED")
-        
-        return success
+        return detailed_rolls
 
     def display_character_sheet(self, skill_format='hierarchical'):
         """Display character information with consolidated skill reporting"""
@@ -632,7 +694,10 @@ class Character:
         print(f"Age: {self.age}")
         print(f"Terms Served: {self.terms_served}")
         print(f"\nCharacteristics:")
-        for attr, value in self.characteristics.items():
+        # Display characteristics in the correct order: STR, DEX, END, INT, EDU, SOC
+        characteristic_order = ['str', 'dex', 'end', 'int', 'edu', 'soc']
+        for attr in characteristic_order:
+            value = self.characteristics[attr]
             hex_val = hex(value)[2:].upper() if 10 <= value <= 15 else str(value)
             print(f"  {attr.upper()}: {value} ({hex_val})")
         
@@ -1061,6 +1126,133 @@ class Character:
     
         print(f'✅ [MUSTERING OUT] {career} | {", ".join(summary_parts)}')
 
+    @staticmethod
+    def check_commission(career, characteristics):
+        """Check if character receives commission (simplified)"""
+        if career in ['Scouts', 'Others']:
+            return False
+            
+        commission_target = {
+            'Navy': 10,
+            'Marines': 9,
+            'Army': 5,
+            'Merchants': 4
+        }
+        
+        roll = Character.roll_2d6()
+        target = commission_target.get(career, 12)
+        
+        # Add modifiers based on characteristics
+        modifier = 0
+        if career == 'Navy' and characteristics.get('soc', 0) >= 9:
+            modifier += 1
+        elif career == 'Marines' and characteristics.get('edu', 0) >= 7:
+            modifier += 1
+        elif career == 'Army' and characteristics.get('end', 0) >= 7:
+            modifier += 1
+        elif career == 'Merchants' and characteristics.get('int', 0) >= 9:
+            modifier += 1
+            
+        success = (roll + modifier) >= target
+        if success:
+            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → COMMISSIONED (Rank 1)")
+        else:
+            print(f"🗡️  [COMMISSION] {career} | Roll: {roll}+{modifier}={roll + modifier} (need {target}) → FAILED")
+        
+        return success
+
+    def roll_for_skills(self, career, num_skills=2, reason='term'):
+        """Roll for skills during a term with enhanced logging"""
+        tables = self.get_skill_tables(career)
+        skill_rolls_this_term = []
+        
+        for i in range(num_skills):
+            # All characters may roll on personal, service, and advanced
+            available_tables = ['personal', 'service', 'advanced']
+            # Only add advanced_education if EDU >= 8
+            if self.characteristics.get('edu', 0) >= 8:
+                available_tables.append('advanced_education')
+            # Choose a random table
+            chosen_table = random.choice(available_tables)
+            table = tables[chosen_table][career]
+            # Roll on the table
+            roll = random.randint(1, 6)
+            result = table.get(roll, 'No skill')
+            skill_rolls_this_term.append((chosen_table, result))
+            
+            # Apply the result
+            if result.startswith('+1'):
+                # Characteristic increase
+                stat = result.split()[1].lower()
+                if stat in self.characteristics:
+                    self.characteristics[stat] += 1
+                    self.log_skill_acquisition(reason, chosen_table, roll, f'+1 {stat.upper()}', 1, 'Characteristic boost')
+            else:
+                # Skill gain
+                self.add_skill(result, 1, reason, chosen_table, roll, 'Skill gain')
+        
+        # Store skill rolls for this term in term_log
+        self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'aging': []})
+
+    @staticmethod
+    def check_promotion_detailed(career, characteristics, current_rank):
+        """Check if character receives promotion with detailed roll information"""
+        if career in ['Scouts', 'Others']:
+            return {
+                'applicable': False,
+                'reason': f'{career} does not have promotions'
+            }
+        
+        # Promotion targets by career and current rank
+        promotion_targets = {
+            'Navy': {1: 10, 2: 9, 3: 8, 4: 7, 5: 6},
+            'Marines': {1: 9, 2: 8, 3: 7, 4: 6, 5: 5},
+            'Army': {1: 5, 2: 5, 3: 5, 4: 5, 5: 5},
+            'Merchants': {1: 4, 2: 4, 3: 4, 4: 4, 5: 4}
+        }
+        
+        if current_rank not in promotion_targets.get(career, {}):
+            return {
+                'applicable': False,
+                'reason': f'No promotion available for {career} rank {current_rank}'
+            }
+        
+        roll = Character.roll_2d6()
+        target = promotion_targets[career][current_rank]
+        
+        # Add modifiers based on characteristics
+        modifier = 0
+        modifier_details = []
+        if career == 'Navy' and characteristics.get('soc', 0) >= 9:
+            modifier += 1
+            modifier_details.append(f"SOC {characteristics.get('soc', 0)}≥9 (+1)")
+        elif career == 'Marines' and characteristics.get('edu', 0) >= 7:
+            modifier += 1
+            modifier_details.append(f"EDU {characteristics.get('edu', 0)}≥7 (+1)")
+        elif career == 'Army' and characteristics.get('end', 0) >= 7:
+            modifier += 1
+            modifier_details.append(f"END {characteristics.get('end', 0)}≥7 (+1)")
+        elif career == 'Merchants' and characteristics.get('int', 0) >= 9:
+            modifier += 1
+            modifier_details.append(f"INT {characteristics.get('int', 0)}≥9 (+1)")
+            
+        total = roll + modifier
+        success = total >= target
+        
+        result = {
+            'applicable': True,
+            'current_rank': current_rank,
+            'new_rank': current_rank + 1 if success else current_rank,
+            'roll': roll,
+            'modifier': modifier,
+            'modifier_details': modifier_details,
+            'total': total,
+            'target': target,
+            'success': success
+        }
+        
+        return result
+
 
 # --- TEST FUNCTIONS ---
 def test_character_stats():
@@ -1414,17 +1606,17 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
                 num_skills = 2
             else:
                 num_skills = 2 if c.terms_served == 1 else 1
-            c.roll_for_skills(career, num_skills)
+            c.roll_for_skills_detailed(career, num_skills)
             
             # 3b) Commission skills
             if commission_this_term:
                 c.grant_automatic_commission_skill(career, output_format)
-                c.roll_for_skills(career, 1, 'commission')
+                c.roll_for_skills_detailed(career, 1, 'commission')
             
             # 3c) Promotion skills
             if promotion_this_term:
                 c.grant_automatic_rank_skill(career, c.rank, output_format)
-                c.roll_for_skills(career, 1, 'promotion')
+                c.roll_for_skills_detailed(career, 1, 'promotion')
             
             # 3d) Automatic skills (by virtue of rank) - already handled in grant_automatic_rank_skill
             

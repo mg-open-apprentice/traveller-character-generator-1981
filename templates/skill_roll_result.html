@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skill Roll Result</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #000;
+            color: #ff0000;
+        }
+        .container {
+            background-color: #000;
+            padding: 30px;
+            border: 2px solid #ff0000;
+            border-radius: 5px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff0000;
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #ff0000;
+        }
+        .result {
+            border: 1px solid #ff0000;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: #110000;
+        }
+        .result h3 {
+            color: #ff0000;
+            margin-top: 0;
+        }
+        .result p {
+            color: #ccc;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .skill-list {
+            background-color: #111;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 3px solid #ff0000;
+        }
+        .skill-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .skill-list li {
+            color: #ccc;
+            margin: 2px 0;
+        }
+        .btn {
+            background-color: #000;
+            color: #ff0000;
+            border: 2px solid #ff0000;
+            padding: 15px 30px;
+            cursor: pointer;
+            font-family: 'Arial', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #ff0000;
+            color: #000;
+            box-shadow: 0 0 20px #ff0000;
+        }
+        .btn-secondary {
+            background-color: #333;
+            border-color: #666;
+        }
+        .btn-secondary:hover {
+            background-color: #666;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SKILL ROLL RESULT</h1>
+        
+        <div class="result">
+            <h3>Roll on {{ roll_result.table.replace('_', ' ').title() }} Table</h3>
+            <p class="success">Roll: {{ roll_result.roll }} → {{ roll_result.result }}</p>
+            
+            <h4>Table Contents:</h4>
+            <div class="skill-list">
+                <ul>
+                    {% for num, skill in roll_result.table_contents.items() %}
+                        <li><strong>{{ num }}:</strong> {{ skill }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            
+            <h4>Current Skills:</h4>
+            <div class="skill-list">
+                {% if skills %}
+                    {% for skill, level in skills.items() %}
+                        <p>{{ skill }}-{{ level }}</p>
+                    {% endfor %}
+                {% else %}
+                    <p>No skills yet.</p>
+                {% endif %}
+            </div>
+            
+            <h4>Skills Acquired This Term:</h4>
+            <div class="skill-list">
+                {% if skill_log %}
+                    {% for entry in skill_log %}
+                        {% if entry.term == 1 %}
+                            <p>{{ entry.event.upper() }}: {{ entry.skill }}-{{ entry.level }} ({{ entry.description }})</p>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p>No skills acquired this term.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <a href="/skill_tables" class="btn">ROLL ANOTHER SKILL</a>
+        <a href="/reenlist" class="btn btn-secondary" style="margin-top: 10px;">REENLISTMENT DECISION</a>
+        <a href="/" class="btn btn-secondary" style="margin-top: 10px;">START OVER</a>
+    </div>
+</body>
+</html> 

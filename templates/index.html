@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+            background-color: white;
+        }
+        select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        .hint {
+            color: #666;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Character Generator</h1>
+        <form method="POST" action="/generate">
+            <div class="form-group">
+                <label for="career">Service:</label>
+                <select id="career" name="career" required>
+                    <option value="Navy" selected>Navy</option>
+                    <option value="Marines">Marines</option>
+                    <option value="Army">Army</option>
+                    <option value="Scouts">Scouts</option>
+                    <option value="Merchants">Merchants</option>
+                    <option value="Others">Others</option>
+                </select>
+                <div class="hint">Choose your character's service branch</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="seed">Seed:</label>
+                <input type="number" id="seed" name="seed" value="100002" required>
+                <div class="hint">Any number for reproducible results</div>
+            </div>
+            
+            <button type="submit" class="submit-btn">Generate Character</button>
+        </form>
+    </div>
+</body>
+</html>
