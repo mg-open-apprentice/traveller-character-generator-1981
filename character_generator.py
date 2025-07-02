@@ -1,5 +1,7 @@
 import random
 import json
+from typing import Literal
+
 
 def set_random_seed(seed=None):
     """Set a random seed for reproducible results during testing"""
@@ -15,9 +17,9 @@ def set_random_seed(seed=None):
 class Character:
     def __init__(self):
         self.age = 18  # Starting age (Traveller standard)
-        self.terms_served = 0
+        self.terms_served: int | float = 0
         self.characteristics = {}
-        self.career = None
+        self.career : Literal["Navy", "Marines", "Army", "Scouts", "Merchants", "Others"] | None = None
         self.name = self.get_random_name()
         self.career_history = []
         self.skills = {}  # Dict of skill_name: level
@@ -278,7 +280,7 @@ class Character:
     # --- CAREER LOGIC ---
 
     @staticmethod
-    def get_available_careers():
+    def get_available_careers() -> list[Literal["Navy", "Marines", "Army", "Scouts", "Merchants", "Others"]]:
         """Return list of available careers"""
         return ['Navy', 'Marines', 'Army', 'Scouts', 'Merchants', 'Others']
 
@@ -323,7 +325,8 @@ class Character:
         )
 
     @staticmethod
-    def attempt_enlistment(characteristics, service_choice):
+    def attempt_enlistment(characteristics, service_choice) -> tuple[Literal["Navy", "Marines", "Army", "Scouts", "Merchants", "Others"], str, int, int, int]:
+    # existing code...
         """Attempt to enlist in chosen career"""
         required_roll = Character.enlistment_roll(service_choice)
         enlistment_roll = Character.roll_2d6()
@@ -342,7 +345,7 @@ class Character:
     @staticmethod
     def get_draft_career():
         """Get randomly assigned career when enlistment fails"""
-        return random.choice(Character.get_available_careers())
+        return random.choice(Character.get_available_careers()) 
 
     # --- SURVIVAL LOGIC ---
 
@@ -882,9 +885,12 @@ class Character:
 
     def to_json(self):
         """Convert character to JSON format"""
-        # Convert characteristics to hex for UPP
-        hex_chars = self.convert_characteristics_to_hex(self.characteristics)
-        upp = self.create_hex_string(hex_chars)
+        # Convert characteristics to hex for UPP (only if characteristics exist)
+        if self.characteristics:
+            hex_chars = self.convert_characteristics_to_hex(self.characteristics)
+            upp = self.create_hex_string(hex_chars)
+        else:
+            upp = "------"  # Placeholder for unrolled characteristics
         
         # Convert skills dict to list format for better JSON structure
         skills_list = [{'name': skill, 'level': level} for skill, level in self.skills.items()]
@@ -1252,6 +1258,39 @@ class Character:
         }
         
         return result
+
+    @classmethod
+    def from_json(cls, data):
+        """Reconstruct a Character object from a dictionary (as produced by to_json)"""
+        obj = cls()
+        obj.name = data.get('name', obj.get_random_name())
+        obj.age = data.get('age', 18)
+        obj.terms_served = data.get('terms_served', 0)
+        obj.characteristics = data.get('characteristics', {})
+        obj.career = data.get('career', None)
+        obj.commissioned = data.get('commissioned', False)
+        obj.rank = data.get('rank', 0)
+        obj.drafted = data.get('drafted', False)
+        obj.promotions = data.get('promotions', 0)
+        # Convert skills list back to dict if needed
+        skills = data.get('skills', [])
+        if isinstance(skills, list):
+            obj.skills = {s['name']: s['level'] for s in skills}
+        else:
+            obj.skills = skills
+        obj.career_history = data.get('career_history', [])
+        obj.aging_log = data.get('aging_log', [])
+        obj.skill_acquisition_log = data.get('skill_acquisition_log', [])
+        obj.generation_log = data.get('generation_log', [])
+        obj.term_log = data.get('term_log', [])
+        obj.mustering_out_benefits = data.get('mustering_out_benefits', {'cash': 0, 'items': []})
+        # Handle automatic_skills_granted as set
+        auto_skills = data.get('automatic_skills_granted', set())
+        if isinstance(auto_skills, list):
+            obj.automatic_skills_granted = set(auto_skills)
+        else:
+            obj.automatic_skills_granted = auto_skills
+        return obj
 
 
 # --- TEST FUNCTIONS ---

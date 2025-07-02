@@ -1,0 +1,57 @@
+stategraph - term
+
+character-generation-status
+
+new (blank)
+in-progress
+completed
+
+enlistment-status
+
+pre-enlisted
+enlisted
+commissioned
+drafted
+post-service
+
+survival-status
+
+pre-survival-check
+survived
+injured
+fatal-injury
+
+promotion-status
+
+ineligible-for-commission
+eligible-for-commission
+ineligible-for-promotion
+eligible-for-promotion
+
+re-enlistment-status
+
+applied_for_discharge
+applied_for_retirement
+applied_for_reenlistment
+
+post-service-status
+
+serving
+discharged
+retired
+military-discharged
+medical-discharged
+military-retirement
+dead
+
+
+
+WHAT ARE WE NOT HAPPY ABOUT
+
+DEBUG INFORMATION UPP=--------- Career= None
+
+1. Start new character - we don't dare touch this for fear of what it could do.
+2. click roll characteristics does give us a choice of services. and initiates age = 18 and Terms = 0
+3. Enlisted in Army but now no buttons to press. What?
+
+

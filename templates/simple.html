@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traveller Character Generator</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a1a;
+            color: #00ff00;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        h1 { text-align: center; margin-bottom: 30px; }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            height: 80vh;
+        }
+        
+        .sidebar {
+            background-color: #2a2a2a;
+            border: 2px solid #00ff00;
+            padding: 20px;
+        }
+        
+        .main-panel {
+            display: grid;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .character-panel, .messages-panel {
+            background-color: #2a2a2a;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid;
+            background-color: transparent;
+            color: inherit;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+        }
+        
+        .btn-create {
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+        
+        .btn-create:hover:not(:disabled) {
+            background-color: #003300;
+        }
+        
+        .btn-delete {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .btn-delete:hover:not(:disabled) {
+            background-color: #330000;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #666;
+            color: #666;
+        }
+        
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .char-item {
+            background-color: #333;
+            border: 1px solid #666;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        
+        .char-label { 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+            color: #87ceeb;
+            font-size: 14px;
+        }
+        .char-value { 
+            font-size: 28px; 
+            font-weight: bold; 
+            color: #ffff00; 
+            margin-bottom: 5px;
+        }
+        .char-hex { 
+            font-size: 12px; 
+            color: #999; 
+            font-family: monospace;
+        }
+        
+        .no-character {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .character-name {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .name {
+            font-size: 28px;
+            color: #ffff00;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .upp {
+            font-size: 20px;
+            color: #87ceeb;
+            font-family: monospace;
+            letter-spacing: 3px;
+            font-weight: bold;
+        }
+        
+        .messages-content {
+            background-color: #000;
+            padding: 15px;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 5px;
+        }
+        
+        h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #00ff00;
+        }
+        
+        h3 {
+            color: #00ff00;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .status-start {
+            background-color: #004400;
+            border: 1px solid #00ff00;
+            color: #00ff00;
+        }
+        
+        .status-progress {
+            background-color: #444400;
+            border: 1px solid #ffff00;
+            color: #ffff00;
+        }
+        
+        .status-complete {
+            background-color: #000044;
+            border: 1px solid #87ceeb;
+            color: #87ceeb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎲 TRAVELLER CHARACTER GENERATOR</h1>
+    
+    <div class="container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <h2>CONTROLS</h2>
+            
+            <!-- Status Indicator -->
+            {% if state == 'start' %}
+                <div class="status-indicator status-start">READY TO CREATE CHARACTER</div>
+            {% elif state == 'in_progress' %}
+                <div class="status-indicator status-progress">CHARACTER IN PROGRESS</div>
+            {% elif state == 'complete' %}
+                <div class="status-indicator status-complete">CHARACTER COMPLETE</div>
+            {% endif %}
+            
+            <!-- Create Button - Only show when no character exists -->
+            {% if state == 'start' %}
+            <button id="create-btn" class="btn btn-create">
+                <div style="font-size: 18px;">CREATE CHARACTER</div>
+                <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                    Generate random sci-fi name + characteristics
+                </div>
+            </button>
+            {% endif %}
+            
+            <!-- Delete Button - Only show when character exists -->
+            {% if character %}
+            <button id="delete-btn" class="btn btn-delete">
+                <div style="font-size: 18px;">DELETE CHARACTER</div>
+                <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                    Reset and start over
+                </div>
+            </button>
+            {% endif %}
+            
+            <div style="margin-top: 30px; padding: 15px; background-color: #333; border: 1px solid #666; border-radius: 5px;">
+                <h4 style="color: #ffff00; margin-top: 0;">Session State</h4>
+                <div style="font-size: 12px; color: #ccc; line-height: 1.4;">
+                    • Create disappears when character exists<br>
+                    • Delete only shows with character<br>
+                    • Character persists in session<br>
+                    • State: <strong>{{ state.upper() }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="main-panel">
+            <!-- Top Right - Character Display -->
+            <div class="character-panel">
+                <h2>CHARACTER STATUS</h2>
+                
+                {% if character %}
+                <div class="character-name">
+                    <div class="name">{{ character.name }}</div>
+                    <div class="upp">UPP: 
+                        {% set chars = character.characteristics %}
+                        {% for stat in ['str', 'dex', 'end', 'int', 'edu', 'soc'] %}
+                            {%- if chars[stat] >= 10 and chars[stat] <= 15 -%}
+                                {{ '%X'|format(chars[stat]) }}
+                            {%- else -%}
+                                {{ chars[stat] }}
+                            {%- endif -%}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>CHARACTERISTICS</h3>
+                    <div class="char-grid">
+                        {% set labels = ['STR', 'DEX', 'END', 'INT', 'EDU', 'SOC'] %}
+                        {% set stats = ['str', 'dex', 'end', 'int', 'edu', 'soc'] %}
+                        {% for i in range(6) %}
+                        <div class="char-item">
+                            <div class="char-label">{{ labels[i] }}</div>
+                            <div class="char-value">{{ character.characteristics[stats[i]] }}</div>
+                            <div class="char-hex">
+                                ({% if character.characteristics[stats[i]] >= 10 and character.characteristics[stats[i]] <= 15 %}{{ '%X'|format(character.characteristics[stats[i]]) }}{% else %}{{ character.characteristics[stats[i]] }}{% endif %})
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                {% if state == 'in_progress' %}
+                <div style="margin-top: 20px; padding: 15px; background-color: #444400; border: 1px solid #ffff00; border-radius: 5px;">
+                    <h4 style="color: #ffff00; margin-top: 0;">Character In Progress</h4>
+                    <div style="font-size: 12px; color: #ffff00;">
+                        Phase: {{ character.get('creation_phase', 'characteristics') }}<br>
+                        Next: Service selection and career progression
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="no-character">
+                    <div style="font-size: 64px; margin-bottom: 20px;">🎯</div>
+                    <div style="font-size: 20px; margin-bottom: 15px;">No Character Created</div>
+                    <div style="font-size: 14px;">Click "CREATE CHARACTER" to begin character generation</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Bottom Right - Messages Panel -->
+            <div class="messages-panel">
+                <h2>MESSAGES</h2>
+                <div class="messages-content">
+                    <div id="message-display" style="color: #00ff00;">
+                        {% if state == 'start' %}
+                            Ready for character creation...
+                        {% elif state == 'in_progress' %}
+                            Character creation in progress. Use DELETE to reset or continue with next phase.
+                        {% elif state == 'complete' %}
+                            Character generation complete!
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Interface loaded with state: {{ state }}");
+            
+            // Create Character Function - only if button exists
+            const createBtn = document.getElementById('create-btn');
+            if (createBtn) {
+                createBtn.onclick = async function() {
+                    console.log("Create button clicked!");
+                    
+                    this.disabled = true;
+                    this.innerHTML = '<div style="font-size: 18px;">Creating...</div><div style="font-size: 12px; margin-top: 8px;">Generating character...</div>';
+                    
+                    const messageDisplay = document.getElementById('message-display');
+                    messageDisplay.innerHTML = '> Creating character with random sci-fi name...';
+                    
+                    try {
+                        const response = await fetch('/api/character/create', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `HTTP ${response.status}`);
+                        }
+                        
+                        const character = await response.json();
+                        console.log("Character created:", character);
+                        
+                        messageDisplay.innerHTML = `> Created character: ${character.name}<br>> Character locked in session<br>> Reloading interface...`;
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                        
+                    } catch (error) {
+                        console.error("Error creating character:", error);
+                        messageDisplay.innerHTML = `> Error: ${error.message}`;
+                        
+                        this.disabled = false;
+                        this.innerHTML = '<div style="font-size: 18px;">CREATE CHARACTER</div><div style="font-size: 12px; margin-top: 8px;">Generate random sci-fi name + characteristics</div>';
+                    }
+                };
+            }
+            
+            // Delete Character Function - only if button exists
+            const deleteBtn = document.getElementById('delete-btn');
+            if (deleteBtn) {
+                deleteBtn.onclick = async function() {
+                    console.log("Delete button clicked!");
+                    
+                    this.disabled = true;
+                    this.innerHTML = '<div style="font-size: 18px;">Deleting...</div>';
+                    
+                    const messageDisplay = document.getElementById('message-display');
+                    messageDisplay.innerHTML = '> Deleting character and resetting session...';
+                    
+                    try {
+                        const response = await fetch('/api/character/delete', {
+                            method: 'POST'
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        const result = await response.json();
+                        messageDisplay.innerHTML = '> Character deleted. Session reset to start state.';
+                        
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                        
+                    } catch (error) {
+                        console.error("Error deleting character:", error);
+                        messageDisplay.innerHTML = `> Error: ${error.message}`;
+                        
+                        this.disabled = false;
+                        this.innerHTML = '<div style="font-size: 18px;">DELETE CHARACTER</div>';
+                    }
+                };
+            }
+        });
+    </script>
+</body>
+</html>

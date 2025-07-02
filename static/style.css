@@ -1,0 +1,272 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Courier New', monospace;
+    background-color: #1a1a1a;
+    color: #00ff00;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.header {
+    background-color: #2a2a2a;
+    border-bottom: 2px solid #00ff00;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 1.5rem;
+}
+
+.status {
+    background-color: #1a4a8a;
+    color: #87ceeb;
+    padding: 0.5rem 1rem;
+    border: 1px solid #87ceeb;
+    font-size: 0.8rem;
+}
+
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.sidebar {
+    width: 320px;
+    background-color: #2a2a2a;
+    border-right: 2px solid #00ff00;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar h2 {
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #00ff00;
+    padding-bottom: 0.5rem;
+}
+
+.button-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.btn {
+    padding: 1rem;
+    border: 2px solid;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: center;
+    transition: background-color 0.2s;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-create {
+    border-color: #00ff00;
+    color: #00ff00;
+}
+
+.btn-create:hover:not(:disabled) {
+    background-color: #003300;
+}
+
+.btn-delete {
+    border-color: #ff4444;
+    color: #ff4444;
+}
+
+.btn-delete:hover:not(:disabled) {
+    background-color: #330000;
+}
+
+.btn-text {
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+}
+
+.btn-desc {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.info-panel {
+    background-color: #333;
+    border: 1px solid #666;
+    padding: 1rem;
+    font-size: 0.8rem;
+}
+
+.info-panel h4 {
+    color: #ffff00;
+    margin-bottom: 0.5rem;
+}
+
+.info-panel ul {
+    list-style: none;
+    padding-left: 1rem;
+}
+
+.info-panel li {
+    margin: 0.2rem 0;
+    color: #ccc;
+}
+
+.info-panel li:before {
+    content: "• ";
+}
+
+.right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.character-panel {
+    flex: 1;
+    border-bottom: 2px solid #00ff00;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.character-panel h2 {
+    background-color: #2a2a2a;
+    margin: -1rem -1rem 1rem -1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #00ff00;
+}
+
+.character-name {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.name {
+    font-size: 2rem;
+    color: #ffff00;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.upp {
+    font-size: 1.2rem;
+    color: #87ceeb;
+}
+
+.characteristics h3 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #00ff00;
+}
+
+.char-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.char-item {
+    background-color: #2a2a2a;
+    border: 1px solid #666;
+    padding: 1rem;
+    text-align: center;
+}
+
+.char-emoji {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+}
+
+.char-label {
+    font-weight: bold;
+    margin-bottom: 0.3rem;
+}
+
+.char-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.char-hex {
+    font-size: 0.8rem;
+    color: #87ceeb;
+    margin-top: 0.2rem;
+}
+
+.no-character {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.no-char-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.no-char-text {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.no-char-desc {
+    font-size: 0.9rem;
+}
+
+.messages-panel {
+    flex: 1;
+    padding: 1rem;
+}
+
+.messages-panel h2 {
+    background-color: #2a2a2a;
+    margin: -1rem -1rem 1rem -1rem;
+    padding: 1rem;
+    border-bottom: 1px solid #00ff00;
+}
+
+.messages-content {
+    background-color: #000;
+    padding: 1rem;
+    height: calc(100% - 3rem);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    overflow-y: auto;
+}
+
+.loading {
+    color: #ffff00;
+}
+
+.loading::after {
+    content: "...";
+    animation: dots 1s infinite;
+}
+
+@keyframes dots {
+    0%, 33% { content: "..."; }
+    34%, 66% { content: "...."; }
+    67%, 100% { content: "....."; }
+}
