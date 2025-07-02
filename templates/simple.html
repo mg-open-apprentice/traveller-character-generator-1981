@@ -370,26 +370,40 @@
                     
                     try {
                         const response = await fetch('/api/character/delete', {
-                            method: 'POST'
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
                         });
                         
+                        console.log("Delete response:", response);
+                        
                         if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error("Server error:", errorText);
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
                         
+                        // Parse response as JSON
                         const result = await response.json();
-                        messageDisplay.innerHTML = '> Character deleted. Session reset to start state.';
+                        console.log("Delete result:", result);
                         
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
+                        if (result.success) {
+                            messageDisplay.innerHTML = '> Character deleted. Session reset to start state.';
+                            
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            throw new Error(result.message || "Unknown error during character deletion");
+                        }
                         
                     } catch (error) {
                         console.error("Error deleting character:", error);
                         messageDisplay.innerHTML = `> Error: ${error.message}`;
                         
                         this.disabled = false;
-                        this.innerHTML = '<div style="font-size: 18px;">DELETE CHARACTER</div>';
+                        this.innerHTML = '<div style="font-size: 18px;">DELETE CHARACTER</div><div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">Reset and start over</div>';
                     }
                 };
             }

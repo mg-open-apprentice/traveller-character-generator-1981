@@ -1,7 +1,8 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from character_generator import Character
 import json
 import os
+import traceback
 
 app = Flask(__name__)
 
@@ -64,6 +65,7 @@ def create_character():
         
     except Exception as e:
         print(f"ERROR: {e}")
+        traceback.print_exc()  # Print full stack trace
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/character/delete', methods=['POST'])
@@ -74,12 +76,66 @@ def delete_character():
         if os.path.exists('current_character.json'):
             os.remove('current_character.json')
             print("Character file deleted - resetting to start state")
-            return jsonify({"success": True, "message": "Character deleted", "new_state": "start"})
+            return jsonify({
+                "success": True, 
+                "message": "Character deleted successfully", 
+                "new_state": "start"
+            })
         else:
-            return jsonify({"success": True, "message": "No character to delete", "new_state": "start"})
+            print("No character file found to delete")
+            return jsonify({
+                "success": True, 
+                "message": "No character to delete", 
+                "new_state": "start"
+            })
             
     except Exception as e:
         print(f"ERROR in delete_character: {e}")
+        traceback.print_exc()  # Print the full stack trace
+        return jsonify({
+            "success": False, 
+            "message": f"Error deleting character: {str(e)}"
+        }), 500
+
+@app.route('/api/character/career', methods=['POST'])
+def select_career():
+    print("=== CAREER SELECTION ROUTE CALLED ===")
+    
+    # Check if character exists
+    if get_character_state() != 'in_progress':
+        return jsonify({"error": "No character in progress"}), 400
+    
+    try:
+        # Get the career from request data
+        data = request.get_json()
+        if not data or 'career' not in data:
+            return jsonify({"error": "No career specified"}), 400
+        
+        career = data['career']
+        print(f"Selected career: {career}")
+        
+        # Load current character data
+        character_data = load_character()
+        if not character_data:
+            return jsonify({"error": "Character not found"}), 404
+        
+        # Update character with selected career
+        character_data['career'] = career
+        character_data['creation_phase'] = 'enlistment'  # Move to next phase
+        
+        # Save updated character
+        with open('current_character.json', 'w') as f:
+            json.dump(character_data, f)
+        
+        return jsonify({
+            "success": True,
+            "message": f"Career selected: {career}",
+            "character": character_data
+        })
+        
+    except Exception as e:
+        print(f"ERROR in select_career: {e}")
+        traceback.print_exc()  # Print full stack trace
         return jsonify({"error": str(e)}), 500
 
 @app.route('/test-character')
