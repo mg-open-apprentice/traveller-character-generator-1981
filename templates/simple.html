@@ -26,6 +26,16 @@
             background-color: #2a2a2a;
             border: 2px solid #00ff00;
             padding: 20px;
+            display: flex;
+            flex-direction: column; /* Make the sidebar a flex container */
+        }
+        
+        .sidebar-top {
+            flex-grow: 1; /* Take up available space */
+        }
+        
+        .sidebar-bottom {
+            margin-top: 20px; /* Space above the bottom section */
         }
         
         .main-panel {
@@ -70,6 +80,15 @@
         .btn-delete:hover:not(:disabled) {
             background-color: #330000;
         }
+
+        .btn-roll {
+            border-color: #00ffff;
+            color: #00ffff;
+        }
+        
+        .btn-roll:hover:not(:disabled) {
+            background-color: #003333;
+        }
         
         .btn:disabled {
             opacity: 0.5;
@@ -91,6 +110,18 @@
             padding: 15px;
             text-align: center;
             border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .char-item.empty {
+            background-color: #222;
+            border: 1px dashed #444;
+        }
+        
+        .char-item.highlight {
+            border-color: #00ffff;
+            background-color: #003333;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
         }
         
         .char-label { 
@@ -127,6 +158,12 @@
             color: #ffff00;
             margin-bottom: 10px;
             font-weight: bold;
+        }
+        
+        .age {
+            font-size: 16px;
+            color: #87ceeb;
+            margin-bottom: 10px;
         }
         
         .upp {
@@ -184,6 +221,19 @@
             border: 1px solid #87ceeb;
             color: #87ceeb;
         }
+
+        .characteristics-buttons {
+            margin-top: 20px;
+            border-top: 1px solid #444;
+            padding-top: 15px;
+        }
+
+        .characteristic-roll-title {
+            color: #00ffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -192,46 +242,108 @@
     <div class="container">
         <!-- Left Sidebar -->
         <div class="sidebar">
-            <h2>CONTROLS</h2>
-            
-            <!-- Status Indicator -->
-            {% if state == 'start' %}
-                <div class="status-indicator status-start">READY TO CREATE CHARACTER</div>
-            {% elif state == 'in_progress' %}
-                <div class="status-indicator status-progress">CHARACTER IN PROGRESS</div>
-            {% elif state == 'complete' %}
-                <div class="status-indicator status-complete">CHARACTER COMPLETE</div>
-            {% endif %}
-            
-            <!-- Create Button - Only show when no character exists -->
-            {% if state == 'start' %}
-            <button id="create-btn" class="btn btn-create">
-                <div style="font-size: 18px;">CREATE CHARACTER</div>
-                <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
-                    Generate random sci-fi name + characteristics
+            <!-- Top Section of Sidebar -->
+            <div class="sidebar-top">
+                <h2>CONTROLS</h2>
+                
+                <!-- Status Indicator -->
+                {% if state == 'start' %}
+                    <div class="status-indicator status-start">READY TO CREATE CHARACTER</div>
+                {% elif state == 'in_progress' %}
+                    <div class="status-indicator status-progress">CHARACTER IN PROGRESS</div>
+                {% elif state == 'complete' %}
+                    <div class="status-indicator status-complete">CHARACTER COMPLETE</div>
+                {% endif %}
+                
+                <!-- Create Button - Only show when no character exists -->
+                {% if state == 'start' %}
+                <button id="create-btn" class="btn btn-create">
+                    <div style="font-size: 18px;">CREATE CHARACTER</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                        Generate random sci-fi name + characteristics
+                    </div>
+                </button>
+                {% endif %}
+                
+                <div style="margin-top: 30px; padding: 15px; background-color: #333; border: 1px solid #666; border-radius: 5px;">
+                    <h4 style="color: #ffff00; margin-top: 0;">Session State</h4>
+                    <div style="font-size: 12px; color: #ccc; line-height: 1.4;">
+                        • Create disappears when character exists<br>
+                        • Delete only shows with character<br>
+                        • Character persists in session<br>
+                        • State: <strong>{{ state.upper() }}</strong>
+                    </div>
                 </div>
-            </button>
-            {% endif %}
-            
-            <!-- Delete Button - Only show when character exists -->
-            {% if character %}
-            <button id="delete-btn" class="btn btn-delete">
-                <div style="font-size: 18px;">DELETE CHARACTER</div>
-                <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
-                    Reset and start over
+                
+                <!-- Characteristic Roll Buttons - Only show when character exists -->
+                {% if character %}
+                <div class="characteristics-buttons">
+                    <div class="characteristic-roll-title">ROLL CHARACTERISTICS</div>
+                    
+                    <!-- Show buttons only for characteristics that haven't been rolled yet -->
+                    {% if not character.characteristics or 'str' not in character.characteristics %}
+                    <button id="roll-str-btn" class="btn btn-roll" data-char="str">
+                        <div style="font-size: 16px;">STRENGTH (STR)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not character.characteristics or 'dex' not in character.characteristics %}
+                    <button id="roll-dex-btn" class="btn btn-roll" data-char="dex">
+                        <div style="font-size: 16px;">DEXTERITY (DEX)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not character.characteristics or 'end' not in character.characteristics %}
+                    <button id="roll-end-btn" class="btn btn-roll" data-char="end">
+                        <div style="font-size: 16px;">ENDURANCE (END)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not character.characteristics or 'int' not in character.characteristics %}
+                    <button id="roll-int-btn" class="btn btn-roll" data-char="int">
+                        <div style="font-size: 16px;">INTELLIGENCE (INT)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not character.characteristics or 'edu' not in character.characteristics %}
+                    <button id="roll-edu-btn" class="btn btn-roll" data-char="edu">
+                        <div style="font-size: 16px;">EDUCATION (EDU)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    {% if not character.characteristics or 'soc' not in character.characteristics %}
+                    <button id="roll-soc-btn" class="btn btn-roll" data-char="soc">
+                        <div style="font-size: 16px;">SOCIAL STANDING (SOC)</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                    </button>
+                    {% endif %}
+                    
+                    <!-- If all characteristics are rolled, show a message -->
+                    {% if character.characteristics and 'str' in character.characteristics and 'dex' in character.characteristics and 'end' in character.characteristics and 'int' in character.characteristics and 'edu' in character.characteristics and 'soc' in character.characteristics %}
+                    <div style="text-align: center; color: #00ffff; padding: 10px;">
+                        All characteristics rolled!
+                    </div>
+                    {% endif %}
                 </div>
-            </button>
-            {% endif %}
-            
-            <div style="margin-top: 30px; padding: 15px; background-color: #333; border: 1px solid #666; border-radius: 5px;">
-                <h4 style="color: #ffff00; margin-top: 0;">Session State</h4>
-                <div style="font-size: 12px; color: #ccc; line-height: 1.4;">
-                    • Create disappears when character exists<br>
-                    • Delete only shows with character<br>
-                    • Character persists in session<br>
-                    • State: <strong>{{ state.upper() }}</strong>
-                </div>
+                {% endif %}
             </div>
+            
+            <!-- Bottom Section of Sidebar with Delete Button -->
+            {% if character %}
+            <div class="sidebar-bottom">
+                <button id="delete-btn" class="btn btn-delete">
+                    <div style="font-size: 18px;">DELETE CHARACTER</div>
+                    <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                        Reset and start over
+                    </div>
+                </button>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Right Panel -->
@@ -243,16 +355,27 @@
                 {% if character %}
                 <div class="character-name">
                     <div class="name">{{ character.name }}</div>
+                    <!-- Display age -->
+                    <div class="age">Age: {{ character.age }}</div>
+                    
+                    <!-- Only show UPP if characteristics exist and have all required attributes -->
+                    {% if character.characteristics and character.characteristics.get('str') is not none and 
+                         character.characteristics.get('dex') is not none and 
+                         character.characteristics.get('end') is not none and 
+                         character.characteristics.get('int') is not none and 
+                         character.characteristics.get('edu') is not none and 
+                         character.characteristics.get('soc') is not none %}
                     <div class="upp">UPP: 
-                        {% set chars = character.characteristics %}
                         {% for stat in ['str', 'dex', 'end', 'int', 'edu', 'soc'] %}
-                            {%- if chars[stat] >= 10 and chars[stat] <= 15 -%}
-                                {{ '%X'|format(chars[stat]) }}
+                            {% set value = character.characteristics.get(stat) %}
+                            {%- if value >= 10 and value <= 15 -%}
+                                {{ '%X'|format(value) }}
                             {%- else -%}
-                                {{ chars[stat] }}
+                                {{ value }}
                             {%- endif -%}
                         {% endfor %}
                     </div>
+                    {% endif %}
                 </div>
                 
                 <div>
@@ -261,12 +384,18 @@
                         {% set labels = ['STR', 'DEX', 'END', 'INT', 'EDU', 'SOC'] %}
                         {% set stats = ['str', 'dex', 'end', 'int', 'edu', 'soc'] %}
                         {% for i in range(6) %}
-                        <div class="char-item">
+                        <div id="char-item-{{ stats[i] }}" class="char-item{% if not character.characteristics or stats[i] not in character.characteristics %} empty{% endif %}">
                             <div class="char-label">{{ labels[i] }}</div>
-                            <div class="char-value">{{ character.characteristics[stats[i]] }}</div>
-                            <div class="char-hex">
-                                ({% if character.characteristics[stats[i]] >= 10 and character.characteristics[stats[i]] <= 15 %}{{ '%X'|format(character.characteristics[stats[i]]) }}{% else %}{{ character.characteristics[stats[i]] }}{% endif %})
-                            </div>
+                            {% if character.characteristics and character.characteristics.get(stats[i]) is not none %}
+                                {% set value = character.characteristics.get(stats[i]) %}
+                                <div class="char-value">{{ value }}</div>
+                                <div class="char-hex">
+                                    ({% if value >= 10 and value <= 15 %}{{ '%X'|format(value) }}{% else %}{{ value }}{% endif %})
+                                </div>
+                            {% else %}
+                                <div class="char-value" style="color: #444;">-</div>
+                                <div class="char-hex">(Not rolled)</div>
+                            {% endif %}
                         </div>
                         {% endfor %}
                     </div>
@@ -276,8 +405,13 @@
                 <div style="margin-top: 20px; padding: 15px; background-color: #444400; border: 1px solid #ffff00; border-radius: 5px;">
                     <h4 style="color: #ffff00; margin-top: 0;">Character In Progress</h4>
                     <div style="font-size: 12px; color: #ffff00;">
-                        Phase: {{ character.get('creation_phase', 'characteristics') }}<br>
-                        Next: Service selection and career progression
+                        {% if character.characteristics and 'str' in character.characteristics and 'dex' in character.characteristics and 'end' in character.characteristics and 'int' in character.characteristics and 'edu' in character.characteristics and 'soc' in character.characteristics %}
+                        Phase: Characteristics complete<br>
+                        Next: Service selection
+                        {% else %}
+                        Phase: Characteristic generation<br>
+                        Next: Roll remaining characteristics
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -299,7 +433,11 @@
                         {% if state == 'start' %}
                             Ready for character creation...
                         {% elif state == 'in_progress' %}
-                            Character creation in progress. Use DELETE to reset or continue with next phase.
+                            {% if character.characteristics and 'str' in character.characteristics and 'dex' in character.characteristics and 'end' in character.characteristics and 'int' in character.characteristics and 'edu' in character.characteristics and 'soc' in character.characteristics %}
+                            All characteristics rolled! Ready for service selection.
+                            {% else %}
+                            Roll each characteristic one by one using the buttons in the sidebar.
+                            {% endif %}
                         {% elif state == 'complete' %}
                             Character generation complete!
                         {% endif %}
@@ -340,7 +478,7 @@
                         const character = await response.json();
                         console.log("Character created:", character);
                         
-                        messageDisplay.innerHTML = `> Created character: ${character.name}<br>> Character locked in session<br>> Reloading interface...`;
+                        messageDisplay.innerHTML = `> Created character: ${character.name}<br>> Age: ${character.age}<br>> Character locked in session<br>> Reloading interface...`;
                         
                         setTimeout(() => {
                             window.location.reload();
@@ -354,6 +492,93 @@
                         this.innerHTML = '<div style="font-size: 18px;">CREATE CHARACTER</div><div style="font-size: 12px; margin-top: 8px;">Generate random sci-fi name + characteristics</div>';
                     }
                 };
+            }
+            
+            // Characteristic Roll Button Function - for all roll buttons
+            const rollButtons = document.querySelectorAll('.btn-roll');
+            rollButtons.forEach(button => {
+                button.onclick = async function() {
+                    const characteristic = this.getAttribute('data-char');
+                    console.log(`Roll ${characteristic} button clicked!`);
+                    
+                    this.disabled = true;
+                    this.innerHTML = `<div style="font-size: 16px;">Rolling...</div>`;
+                    
+                    const messageDisplay = document.getElementById('message-display');
+                    messageDisplay.innerHTML = `> Rolling for ${characteristic.toUpperCase()}...`;
+                    
+                    try {
+                        const response = await fetch('/api/character/roll_characteristic', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ characteristic: characteristic })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || `HTTP ${response.status}`);
+                        }
+                        
+                        const result = await response.json();
+                        console.log(`${characteristic} rolled:`, result);
+                        
+                        // Update the UI to display the rolled characteristic
+                        const charElement = document.getElementById(`char-item-${characteristic}`);
+                        if (charElement) {
+                            // Remove the 'empty' class if it exists
+                            charElement.classList.remove('empty');
+                            
+                            // Add a highlight class to draw attention
+                            charElement.classList.add('highlight');
+                            
+                            // Update the characteristic value and hex display
+                            charElement.innerHTML = `
+                                <div class="char-label">${characteristic.toUpperCase()}</div>
+                                <div class="char-value">${result.value}</div>
+                                <div class="char-hex">(${result.hex_value})</div>
+                            `;
+                            
+                            // Remove the highlight after 2 seconds
+                            setTimeout(() => {
+                                charElement.classList.remove('highlight');
+                            }, 2000);
+                        }
+                        
+                        messageDisplay.innerHTML = `> Rolled ${result.value} for ${characteristic.toUpperCase()}`;
+                        
+                        // Hide the button (will disappear on reload, but this provides immediate feedback)
+                        this.style.display = 'none';
+                        
+                        // Check if all characteristics are rolled
+                        const allRolled = checkAllCharacteristicsRolled(result.character);
+                        if (allRolled) {
+                            messageDisplay.innerHTML += '<br>> All characteristics rolled! Ready for service selection.';
+                        }
+                        
+                        // Optional: Reload the page to update the UI fully
+                        // setTimeout(() => {
+                        //     window.location.reload();
+                        // }, 1500);
+                        
+                    } catch (error) {
+                        console.error(`Error rolling ${characteristic}:`, error);
+                        messageDisplay.innerHTML = `> Error: ${error.message}`;
+                        
+                        this.disabled = false;
+                        this.innerHTML = `
+                            <div style="font-size: 16px;">${characteristic.toUpperCase()}</div>
+                            <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Roll 2d6</div>
+                        `;
+                    }
+                };
+            });
+            
+            // Helper function to check if all characteristics are rolled
+            function checkAllCharacteristicsRolled(character) {
+                if (!character || !character.characteristics) return false;
+                
+                const required = ['str', 'dex', 'end', 'int', 'edu', 'soc'];
+                return required.every(stat => stat in character.characteristics);
             }
             
             // Delete Character Function - only if button exists
