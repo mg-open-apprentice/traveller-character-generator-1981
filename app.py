@@ -106,5 +106,45 @@ def reveal_characteristic():
         json.dump(char_data, f)
     return jsonify({'upp': upp, 'revealed': char_data['revealed']})
 
+@app.route('/attempt_enlistment', methods=['POST'])
+def attempt_enlistment():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    data = request.get_json()
+    service = data.get('service')
+    valid_services = ['Navy', 'Marines', 'Army', 'Scouts', 'Merchants', 'Others']
+    if service not in valid_services:
+        return jsonify({'error': 'Invalid service'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    characteristics = char_data.get('characteristics', {})
+    # Map to short keys for attempt_enlistment
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_enlist = {char_map[k]: v for k, v in characteristics.items()}
+    career, enlistment_status, required_roll, enlistment_roll, modifier = Character.attempt_enlistment(char_for_enlist, service)
+    # Save outcome to character data
+    char_data['service'] = career
+    char_data['enlistment_status'] = enlistment_status
+    char_data['enlistment_roll'] = enlistment_roll
+    char_data['enlistment_required'] = required_roll
+    char_data['enlistment_modifier'] = modifier
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify({
+        'service': career,
+        'enlistment_status': enlistment_status,
+        'required_roll': required_roll,
+        'enlistment_roll': enlistment_roll,
+        'modifier': modifier
+    })
+
 if __name__ == '__main__':
     app.run(debug=True) 
