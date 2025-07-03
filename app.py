@@ -6,8 +6,30 @@ from character_generator import Character
 app = Flask(__name__)
 
 def ordinal(n):
-    # Returns ordinal string for 1, 2, 3, ...
-    return "%d%s" % (n, "tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4]) if n > 0 else "0"
+    # Dictionary mapping numbers to written ordinal forms
+    ordinal_dict = {
+        1: "First",
+        2: "Second",
+        3: "Third",
+        4: "Fourth",
+        5: "Fifth",
+        6: "Sixth",
+        7: "Seventh",
+        8: "Eighth",
+        9: "Ninth",
+        10: "Tenth",
+        11: "Eleventh",
+        12: "Twelfth",
+        13: "Thirteenth",
+        14: "Fourteenth",
+        15: "Fifteenth",
+        16: "Sixteenth",
+        17: "Seventeenth",
+        18: "Eighteenth",
+        19: "Nineteenth",
+        20: "Twentieth"
+    }
+    return ordinal_dict.get(n, f"{n}th") if n > 0 else "Zero"
 
 @app.route('/')
 def index():
@@ -184,11 +206,149 @@ def term_survival():
     }
     char_for_survival = {char_map[k]: v for k, v in characteristics.items()}
     result = Character.check_survival_detailed(service, char_for_survival)
-    # Save outcome to character data (for now, just log survived/injured)
+    # Save outcome to character data and mark survival as completed
     char_data['last_survival'] = result
+    char_data['survival_completed'] = True
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify(result)
+
+@app.route('/term_survival', methods=['GET'])
+def get_term_survival():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    return jsonify(char_data.get('last_survival', {}))
+
+@app.route('/term_commission', methods=['POST'])
+def term_commission():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    characteristics = char_data.get('characteristics', {})
+    # Map to short keys for check_commission_detailed
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_commission = {char_map[k]: v for k, v in characteristics.items()}
+    result = Character.check_commission_detailed(service, char_for_commission)
+    # Save outcome to character data and mark commission as completed
+    char_data['last_commission'] = result
+    char_data['commission_completed'] = True
+    char_data['commission_succeeded'] = result.get('success', False)
+    # If commission succeeded, mark character as commissioned permanently
+    if result.get('success', False):
+        char_data['is_commissioned'] = True
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify(result)
+
+@app.route('/term_commission', methods=['GET'])
+def get_term_commission():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    return jsonify(char_data.get('last_commission', {}))
+
+@app.route('/term_promotion', methods=['POST'])
+def term_promotion():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    characteristics = char_data.get('characteristics', {})
+    current_rank = char_data.get('current_rank', 0)  # Default to 0 if no rank
+    # Map to short keys for check_promotion_detailed
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_promotion = {char_map[k]: v for k, v in characteristics.items()}
+    result = Character.check_promotion_detailed(service, char_for_promotion, current_rank)
+    # Save outcome to character data and mark promotion as completed
+    char_data['last_promotion'] = result
+    char_data['promotion_completed'] = True
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify(result)
+
+@app.route('/term_promotion', methods=['GET'])
+def get_term_promotion():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    return jsonify(char_data.get('last_promotion', {}))
+
+@app.route('/term_button_status', methods=['GET'])
+def term_button_status():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    return jsonify({
+        'survival_completed': char_data.get('survival_completed', False),
+        'commission_completed': char_data.get('commission_completed', False),
+        'commission_succeeded': char_data.get('commission_succeeded', False),
+        'is_commissioned': char_data.get('is_commissioned', False),
+        'promotion_completed': char_data.get('promotion_completed', False),
+        'reenlistment_completed': char_data.get('reenlistment_completed', False)
+    })
+
+@app.route('/term_reenlistment', methods=['POST'])
+def term_reenlistment():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    age = char_data.get('age', 18)
+    # For now, assume character wants to re-enlist
+    result = Character.attempt_reenlistment(service, age, preference='reenlist')
+    # Save outcome to character data and mark re-enlistment as completed
+    char_data['last_reenlistment'] = result
+    char_data['reenlistment_completed'] = True
+    char_data['reenlistment_succeeded'] = result in ['approved', 'mandatory']
+    # If re-enlistment succeeded, increment terms served and age
+    if result in ['approved', 'mandatory']:
+        char_data['terms_served'] = char_data.get('terms_served', 0) + 1
+        char_data['age'] = age + 4
+        # Reset term completion flags for next term
+        char_data['survival_completed'] = False
+        char_data['commission_completed'] = False
+        char_data['promotion_completed'] = False
+        char_data['last_survival'] = {}
+        char_data['last_commission'] = {}
+        char_data['last_promotion'] = {}
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify({
+        'result': result,
+        'succeeded': result in ['approved', 'mandatory'],
+        'terms_served': char_data.get('terms_served', 0),
+        'age': char_data.get('age', 18)
+    })
 
 if __name__ == '__main__':
     app.run(debug=True) 
