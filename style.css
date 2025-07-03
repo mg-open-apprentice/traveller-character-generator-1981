@@ -82,6 +82,10 @@ button:hover {
     background: #1565c0;
 }
 
+.sidebar-bottom {
+    margin-top: auto;
+}
+
 .layout {
     display: flex;
     min-height: 100vh;

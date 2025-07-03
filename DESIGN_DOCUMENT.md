@@ -20,6 +20,58 @@ Classic Traveller Character Generator - Specification
 
 ---
 
+## Current Implementation Status (as of [latest milestone])
+
+- The app is a single-page web application (SPA) with a left-hand sidebar and a main content area.
+- The sidebar is divided into three sections:
+  1. **Character Actions:** Create Character, Delete Character
+  2. **Characteristics:** Six attribute buttons (progressive reveal)
+  3. **Service Selection:** Six service buttons (Navy, Marines, Army, Scouts, Merchants, Others)
+- The workflow is progressive:
+  - Only the relevant section is visible at each stage.
+  - After all characteristics are revealed, only service selection is shown.
+  - After a service is assigned (enlisted or drafted), only Character Actions remain.
+- All UI updates are dynamic; no page reloads.
+
+### Implementation Details
+
+- **Frontend:**
+  - HTML/CSS for layout, section headers, and dividers.
+  - JavaScript for dynamic show/hide of sidebar sections and for calling backend endpoints.
+- **Backend:**
+  - Flask endpoints for character creation, deletion, characteristic reveal, and service enlistment.
+  - State is stored in `current_character.json`.
+- **Progressive Workflow:**
+  - Characteristics are revealed one at a time; after all are revealed, service selection is enabled.
+  - Service selection attempts enlistment and may result in drafting.
+
+### GUI Elements and Backend Mapping
+
+| GUI Element (Button/Section) | Backend Endpoint         | character_generator.py Function(s)      | Description/Workflow Step                |
+|------------------------------|-------------------------|-----------------------------------------|------------------------------------------|
+| Create Character             | `/create_character`     | `Character.__init__`, `get_random_name` | Start new character, set name/age        |
+| Delete Character             | `/delete_character`     | (none)                                  | Delete/reset character                   |
+| Strength, Dexterity, ...     | `/reveal_characteristic`| `generate_characteristics`, `convert_characteristics_to_hex` | Reveal and display each attribute        |
+| Navy, Marines, ...           | `/attempt_enlistment`   | `attempt_enlistment`, `get_draft_career`| Attempt to enlist, possibly draft        |
+
+## Updated Button ↔ Endpoint Correspondence for Term Workflow
+
+- **Commission and Promotion** are now separate buttons and endpoints for clarity and direct mapping to backend logic.
+- **Term outcome buttons** (Survival, Commission, Promotion, Skills, Ageing, Re-enlistment) are visually grouped in the lower half of the interface.
+- **Skills buttons** are dynamically generated: after commission/promotion, a button is shown for each skill table the character is eligible for (based on education, service, etc.). Each button resolves one skill roll and disappears once resolved.
+
+| Button Name         | When Shown / Logic                                 | Backend Endpoint           | character_generator.py Function(s)         | Description/Workflow Step                |
+|---------------------|----------------------------------------------------|----------------------------|--------------------------------------------|------------------------------------------|
+| Survival            | Start of each term                                 | `/term_survival`           | `check_survival_detailed`                  | Survival check for the term              |
+| Commission          | If eligible, after survival                        | `/term_commission`         | `check_commission_detailed`                | Attempt to gain commission               |
+| Promotion           | If eligible, after commission                      | `/term_promotion`          | `check_promotion_detailed`                 | Attempt to gain promotion                |
+| Skill Table X       | For each eligible skill table, after promotion     | `/term_skill`              | `roll_for_skills`, `add_skill`             | Resolve one skill roll for a table       |
+| Ageing              | After all skills resolved, if age threshold passed | `/term_ageing`             | `check_ageing`, `apply_ageing_effects`, `apply_advanced_ageing_effects` | Apply ageing effects      |
+| Re-enlistment       | End of term                                        | `/term_reenlistment`       | `attempt_reenlistment`, `reenlistment_roll`| Attempt to re-enlist or muster out       |
+
+- **Skill Table Buttons:** The number and type of skill buttons depend on the character’s eligibility (e.g., education, service, term events). Each button triggers a roll for a specific skill table and disappears once resolved.
+- **Button Visibility:** Only show buttons relevant to the current step in the term workflow. Disable or hide buttons that are not currently actionable.
+
 ## 1. Project Overview
 
 The Traveller Character Generator is a web-based application designed to guide users through the process of creating a character for the 1981 'Classic Traveller' science fiction role-playing game. The generator supports users through the initial character creation, career progression, and mustering out, culminating in a downloadable character sheet.

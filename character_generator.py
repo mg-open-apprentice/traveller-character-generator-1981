@@ -24,8 +24,8 @@ class Character:
         self.career_history = []
         self.skills = {}  # Dict of skill_name: level
         self.mustering_out_benefits = {'cash': 0, 'items': []}
-        self.aging_log = []  # List of dicts: {'term': int, 'age': int, 'effects': [str]}
-        self.term_log = []  # List of dicts: {'term': int, 'age': int, 'skills': [(table, result)], 'aging': [str]}
+        self.ageing_log = []  # List of dicts: {'term': int, 'age': int, 'effects': [str]}
+        self.term_log = []  # List of dicts: {'term': int, 'age': int, 'skills': [(table, result)], 'ageing': [str]}
         self.skill_acquisition_log = []  # List of dicts: {'term': int, 'event': str, 'skill': str, 'level': int}
         self.automatic_skills_granted = set()  # Track which automatic skills have been granted
         self.commissioned = False  # Officer status
@@ -39,41 +39,41 @@ class Character:
         self.age += 4
         self.terms_served += 1
 
-        # Check for aging effects
-        aging_effects = self.check_aging()
-        if aging_effects:
-            self.aging_log.append({
+        # Check for ageing effects
+        ageing_effects = self.check_ageing()
+        if ageing_effects:
+            self.ageing_log.append({
                 'term': self.terms_served,  # The term just completed
                 'age': self.age,
-                'effects': aging_effects
+                'effects': ageing_effects
             })
-            # Log aging event in generation log
-            self.log_event('aging', {
+            # Log ageing event in generation log
+            self.log_event('ageing', {
                 'term': self.terms_served,
                 'age': self.age,
-                'effects': aging_effects
+                'effects': ageing_effects
             })
-        # Add aging effects to the latest term_log entry (if any)
+        # Add ageing effects to the latest term_log entry (if any)
         if self.term_log and self.term_log[-1]['term'] == self.terms_served:
-            self.term_log[-1]['aging'] = aging_effects
+            self.term_log[-1]['ageing'] = ageing_effects
 
     def get_age(self):
         return self.age
 
-    def check_aging(self):
-        """Check for aging effects when crossing age thresholds"""
-        aging_thresholds = [34, 38, 42, 46, 50, 54, 58, 62]
-        advanced_aging_start = 66
+    def check_ageing(self):
+        """Check for ageing effects when crossing age thresholds"""
+        ageing_thresholds = [34, 38, 42, 46, 50, 54, 58, 62]
+        advanced_ageing_start = 66
     
         # Check which thresholds we've crossed this term
         previous_age = self.age - 4
         current_age = self.age
     
-        aging_effects = []
+        ageing_effects = []
         checks_performed = []  # Track all checks performed
 
-        # Log the aging check start
-        self.log_event('aging_check_start', {
+        # Log the ageing check start
+        self.log_event('ageing_check_start', {
             'term': self.terms_served,
             'previous_age': previous_age,
             'current_age': current_age,
@@ -81,11 +81,11 @@ class Character:
         })
 
         # Check standard thresholds (34 - 62)
-        for threshold in aging_thresholds:
+        for threshold in ageing_thresholds:
             if previous_age < threshold <= current_age:
-#               print(f"\n⏰ Aging check at age {threshold}:")
-                # Log that we're performing an aging check
-                self.log_event('aging_threshold_check', {
+#               print(f"\n⏰ Ageing check at age {threshold}:")
+                # Log that we're performing an ageing check
+                self.log_event('ageing_threshold_check', {
                     'age': threshold,
                     'previous_age': previous_age,
                     'current_age': current_age,
@@ -93,11 +93,11 @@ class Character:
                     'threshold_crossed': True
                 })
                 checks_performed.append(threshold)
-                effects = self.apply_aging_effects(threshold)
-                aging_effects.extend(effects)
+                effects = self.apply_ageing_effects(threshold)
+                ageing_effects.extend(effects)
             else:
                 # Log that this threshold was not crossed
-                self.log_event('aging_threshold_check', {
+                self.log_event('ageing_threshold_check', {
                     'age': threshold,
                     'previous_age': previous_age,
                     'current_age': current_age,
@@ -106,13 +106,13 @@ class Character:
                     'reason': f'Threshold {threshold} not crossed (previous_age={previous_age}, current_age={current_age})'
                 })
 
-        # Check advanced aging (66+)
-        if current_age >= advanced_aging_start:
+        # Check advanced ageing (66+)
+        if current_age >= advanced_ageing_start:
             for age in range(max(66, ((previous_age // 4) + 1) * 4), current_age + 1, 4):
-                if age >= advanced_aging_start:
-#                   print(f"\n⚰️  Advanced aging check at age {age}:")
-                    # Log that we're performing an advanced aging check
-                    self.log_event('aging_threshold_check', {
+                if age >= advanced_ageing_start:
+#                   print(f"\n⚰️  Advanced ageing check at age {age}:")
+                    # Log that we're performing an advanced ageing check
+                    self.log_event('ageing_threshold_check', {
                         'age': age,
                         'previous_age': previous_age,
                         'current_age': current_age,
@@ -120,51 +120,51 @@ class Character:
                         'threshold_crossed': True
                     })
                     checks_performed.append(age)
-                    effects = self.apply_advanced_aging_effects(age)
-                    aging_effects.extend(effects)
+                    effects = self.apply_advanced_ageing_effects(age)
+                    ageing_effects.extend(effects)
         else:
-            # Log that advanced aging was not reached
-            self.log_event('aging_threshold_check', {
-                'age': advanced_aging_start,
+            # Log that advanced ageing was not reached
+            self.log_event('ageing_threshold_check', {
+                'age': advanced_ageing_start,
                 'previous_age': previous_age,
                 'current_age': current_age,
                 'phase': 'advanced',
                 'threshold_crossed': False,
-                'reason': f'Advanced aging not reached (current_age={current_age} < {advanced_aging_start})'
+                'reason': f'Advanced ageing not reached (current_age={current_age} < {advanced_ageing_start})'
             })
 
-        # Log if no aging checks were performed this term
+        # Log if no ageing checks were performed this term
         if not checks_performed:
-            self.log_event('aging_threshold_check', {
+            self.log_event('ageing_threshold_check', {
                 'age': current_age,
                 'previous_age': previous_age,
                 'current_age': current_age,
                 'phase': 'none',
                 'threshold_crossed': False,
-                'note': 'No aging thresholds crossed this term'
+                'note': 'No ageing thresholds crossed this term'
             })
 
-        # Log the aging check completion
-        self.log_event('aging_check_complete', {
+        # Log the ageing check completion
+        self.log_event('ageing_check_complete', {
             'term': self.terms_served,
             'checks_performed': checks_performed,
-            'aging_effects': aging_effects,
-            'total_effects': len(aging_effects)
+            'ageing_effects': ageing_effects,
+            'total_effects': len(ageing_effects)
         })
 
-        return aging_effects
+        return ageing_effects
 
-    def apply_aging_effects(self, age):
-        """Apply aging effects at a specific age"""
+    def apply_ageing_effects(self, age):
+        """Apply ageing effects at a specific age"""
         effects = []
 
         if age in [34, 38, 42, 46]:
-            # Phase 1: Early aging
+            # Phase 1: Early ageing
             checks = [
                 ('str', 8, 1), ('dex', 7, 1), ('end', 8, 1)
             ]
         elif age in [50, 54, 58, 62]:
-            # Phase 2: Advanced aging  
+            # Phase 2: Advanced ageing  
             checks = [
                 ('str', 9, 1), ('dex', 8, 1), ('end', 9, 1)  # Using 'end' to match your existing code
             ]
@@ -177,8 +177,8 @@ class Character:
                 actual_loss = old_value - self.characteristics[stat]
 #               print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
-                # Log individual aging check
-                self.log_event('aging_check', {
+                # Log individual ageing check
+                self.log_event('ageing_check', {
                     'age': age,
                     'stat': stat.upper(),
                     'roll': roll,
@@ -190,8 +190,8 @@ class Character:
                 })
             else:
 #               print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
-                # Log individual aging check (no loss)
-                self.log_event('aging_check', {
+                # Log individual ageing check (no loss)
+                self.log_event('ageing_check', {
                     'age': age,
                     'stat': stat.upper(),
                     'roll': roll,
@@ -204,11 +204,11 @@ class Character:
         
         return effects
 
-    def apply_advanced_aging_effects(self, age):
-        """Apply advanced aging effects for ages 66+"""
+    def apply_advanced_ageing_effects(self, age):
+        """Apply advanced ageing effects for ages 66+"""
         effects = []
         
-        # Advanced aging affects STR, DEX, END, and INT
+        # Advanced ageing affects STR, DEX, END, and INT
         checks = [
             ('str', 9, 2), ('dex', 9, 2), ('end', 9, 2), ('int', 9, 1)
         ]
@@ -221,8 +221,8 @@ class Character:
                 actual_loss = old_value - self.characteristics[stat]
 #                print(f"  {stat.upper()}: Roll {roll} < {target} → Lost {actual_loss} point(s) ({old_value} → {self.characteristics[stat]})")
                 effects.append(f"-{actual_loss} {stat.upper()}")
-                # Log individual advanced aging check
-                self.log_event('aging_check', {
+                # Log individual advanced ageing check
+                self.log_event('ageing_check', {
                     'age': age,
                     'stat': stat.upper(),
                     'roll': roll,
@@ -234,8 +234,8 @@ class Character:
                 })
             else:
 #                print(f"  {stat.upper()}: Roll {roll} ≥ {target} → No loss")
-                # Log individual advanced aging check (no loss)
-                self.log_event('aging_check', {
+                # Log individual advanced ageing check (no loss)
+                self.log_event('ageing_check', {
                     'age': age,
                     'stat': stat.upper(),
                     'roll': roll,
@@ -684,7 +684,7 @@ class Character:
                 self.add_skill(result, 1, reason, chosen_table, roll, 'Skill gain')
         
         # Store skill rolls for this term in term_log
-        self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'aging': []})
+        self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'ageing': []})
         
         return detailed_rolls
 
@@ -730,9 +730,9 @@ class Character:
         else:
             self.display_skill_acquisitions_hierarchical()
         
-        if self.aging_log:
-            print(f"\n⏰ Aging Effects History:")
-            for entry in self.aging_log:
+        if self.ageing_log:
+            print(f"\n⏰ Ageing Effects History:")
+            for entry in self.ageing_log:
                 print(f"  Term {entry['term']} (Age {entry['age']}): {', '.join(entry['effects'])}")
         
         if self.mustering_out_benefits:
@@ -919,7 +919,7 @@ class Character:
             'promotions': self.promotions,
             'skills': skills_list,
             'career_history': career_history_detailed,
-            'aging_log': self.aging_log,
+            'ageing_log': self.ageing_log,
             'skill_acquisition_log': self.skill_acquisition_log,
             'generation_log': self.generation_log,
             'mustering_out_rolls': self.calculate_mustering_out_rolls(),
@@ -954,18 +954,18 @@ class Character:
                 else:
                     print(f"  [{event}] {table}: {roll} → {skill} +{level} ({description})")
 
-    def display_current_term_aging(self, output_format='text'):
-        """Display aging effects for the current term"""
+    def display_current_term_ageing(self, output_format='text'):
+        """Display ageing effects for the current term"""
         if output_format != 'text':
             return
     
-        # Check for aging checks in the generation log (this captures all checkprint(f"🎖️ [Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")s, not just losses)
-        aging_checks = [event for event in self.generation_log 
-                  if event['event_type'] == 'aging_check' and event['term'] == self.terms_served]
+        # Check for ageing checks in the generation log (this captures all checkprint(f"🎖️ [Promotion Check] {career}: Roll {roll} + {modifier} = {roll + modifier} (Need {target}) → {'PROMOTED' if success else 'FAILED'}")s, not just losses)
+        ageing_checks = [event for event in self.generation_log 
+                  if event['event_type'] == 'ageing_check' and event['term'] == self.terms_served]
     
-        if aging_checks:
+        if ageing_checks:
             print(f"⏰ [AGEING]")
-            for check in aging_checks:
+            for check in ageing_checks:
                 data = check['data']
                 stat = data['stat']
                 roll = data['roll']
@@ -1198,7 +1198,7 @@ class Character:
                 self.add_skill(result, 1, reason, chosen_table, roll, 'Skill gain')
         
         # Store skill rolls for this term in term_log
-        self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'aging': []})
+        self.term_log.append({'term': self.terms_served, 'age': self.age, 'skills': skill_rolls_this_term, 'ageing': []})
 
     @staticmethod
     def check_promotion_detailed(career, characteristics, current_rank):
@@ -1279,7 +1279,7 @@ class Character:
         else:
             obj.skills = skills
         obj.career_history = data.get('career_history', [])
-        obj.aging_log = data.get('aging_log', [])
+        obj.ageing_log = data.get('ageing_log', [])
         obj.skill_acquisition_log = data.get('skill_acquisition_log', [])
         obj.generation_log = data.get('generation_log', [])
         obj.term_log = data.get('term_log', [])
@@ -1373,20 +1373,20 @@ def test_survival_logic():
     
     print("✅ Survival logic test passed")
 
-def test_aging_effects():
-    """Test aging effects"""
+def test_ageing_effects():
+    """Test ageing effects"""
     c = Character()
     c.characteristics = {'str': 10, 'dex': 10, 'end': 10, 'int': 10, 'edu': 10, 'soc': 10}
     
-    # Test aging at 34 (should affect STR, DEX, END)
-    effects = c.apply_aging_effects(34)
-    assert isinstance(effects, list), "Aging effects should be a list"
+    # Test ageing at 34 (should affect STR, DEX, END)
+    effects = c.apply_ageing_effects(34)
+    assert isinstance(effects, list), "Ageing effects should be a list"
     
-    # Test advanced aging at 66 (should affect STR, DEX, END, INT)
-    advanced_effects = c.apply_advanced_aging_effects(66)
-    assert isinstance(advanced_effects, list), "Advanced aging effects should be a list"
+    # Test advanced ageing at 66 (should affect STR, DEX, END, INT)
+    advanced_effects = c.apply_advanced_ageing_effects(66)
+    assert isinstance(advanced_effects, list), "Advanced ageing effects should be a list"
     
-    print("✅ Aging effects test passed")
+    print("✅ Ageing effects test passed")
 
 def test_skill_acquisition():
     """Test skill acquisition"""
@@ -1662,8 +1662,8 @@ def run_full_character_generation(death_rule_enabled=False, service_choice=None,
             # Report skills
             c.display_current_term_skills(output_format)
             
-            # Report aging effects
-            c.display_current_term_aging(output_format)
+            # Report ageing effects
+            c.display_current_term_ageing(output_format)
 
             if output_format == 'text':
                 print(f"✅ [TERM COMPLETED] Term: {c.terms_served}. Age: {c.age}")
@@ -1734,7 +1734,7 @@ def run_all_tests():
         test_career_choice_modifiers,
         test_enlistment_logic,
         test_survival_logic,
-        test_aging_effects,
+        test_ageing_effects,
         test_skill_acquisition,
         test_commission_and_promotion,
         test_reenlistment_logic,
@@ -1848,7 +1848,7 @@ if __name__ == "__main__":
                 'career': test_career_choice_modifiers,
                 'enlistment': test_enlistment_logic,
                 'survival': test_survival_logic,
-                'aging': test_aging_effects,
+                'ageing': test_ageing_effects,
                 'skills': test_skill_acquisition,
                 'commission': test_commission_and_promotion,
                 'reenlistment': test_reenlistment_logic,
@@ -1863,7 +1863,7 @@ if __name__ == "__main__":
                 print(f"Available tests: {', '.join(test_functions.keys())}")
         else:
             print("Usage: python character_generator.py test-single <test_name>")
-            print("Available tests: stats, career, enlistment, survival, aging, skills, commission, reenlistment, mustering")
+            print("Available tests: stats, career, enlistment, survival, ageing, skills, commission, reenlistment, mustering")
     
     elif mode == "help":
         print("Traveller Character Generator - Usage Options:")
@@ -1876,7 +1876,7 @@ if __name__ == "__main__":
         print("  python character_generator.py test-single <test>                # Run specific test")
         print("  python character_generator.py help                              # Show this help")
         print("\nAvailable careers: Navy, Marines, Army, Scouts, Merchants, Others")
-        print("Available single tests: stats, career, enlistment, survival, aging, skills, commission, reenlistment, mustering")
+        print("Available single tests: stats, career, enlistment, survival, ageing, skills, commission, reenlistment, mustering")
     
     else:
         print(f"Unknown mode: {mode}")

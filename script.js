@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const uppDisplay = document.getElementById('upp-display');
     const attributeDiv = document.getElementById('attribute-buttons');
     const serviceDiv = document.getElementById('service-buttons');
+    const termSection = document.getElementById('term-section');
+    const termTitle = document.getElementById('term-title');
+    const survivalBtn = document.getElementById('survival-btn');
 
     const attrButtons = {
         strength: document.getElementById('strength-btn'),
@@ -39,16 +42,36 @@ document.addEventListener('DOMContentLoaded', function() {
     let revealed = [];
     let serviceAssigned = false;
 
+    function showTermSection() {
+        fetch('/term_info')
+            .then(res => res.json())
+            .then(data => {
+                if (data.term_ordinal) {
+                    termTitle.textContent = `${data.term_ordinal.charAt(0).toUpperCase() + data.term_ordinal.slice(1)} Term`;
+                } else {
+                    termTitle.textContent = 'Term';
+                }
+                termSection.style.display = 'block';
+            });
+    }
+
+    function hideTermSection() {
+        termSection.style.display = 'none';
+    }
+
     function updateButtonVisibility() {
         if (serviceAssigned) {
             attributeDiv.style.display = 'none';
             serviceDiv.style.display = 'none';
+            showTermSection();
         } else if (revealed.length === 6) {
             attributeDiv.style.display = 'none';
             serviceDiv.style.display = 'block';
+            hideTermSection();
         } else {
             attributeDiv.style.display = 'block';
             serviceDiv.style.display = 'none';
+            hideTermSection();
         }
     }
 
@@ -60,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
         serviceDiv.style.display = 'none';
         revealed = [];
         serviceAssigned = false;
+        hideTermSection();
         try {
             const response = await fetch('/create_character', {
                 method: 'POST',
@@ -86,6 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
         serviceDiv.style.display = 'none';
         revealed = [];
         serviceAssigned = false;
+        hideTermSection();
         try {
             const response = await fetch('/delete_character', {
                 method: 'POST',
@@ -152,6 +177,24 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Survival button logic
+    survivalBtn.addEventListener('click', async function() {
+        resultDiv.textContent = 'Checking survival...';
+        try {
+            const response = await fetch('/term_survival', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            let msg = `Survival Outcome: ${data.outcome || (data.survived ? 'survived' : 'injured')}` +
+                      `\nRoll: ${data.roll}, Bonus: ${data.bonus}, Total: ${data.total}, Required: ${data.required}`;
+            resultDiv.textContent = msg;
+        } catch (err) {
+            resultDiv.textContent = 'Error checking survival.';
+        }
+    });
 
     // Initial state
     updateButtonVisibility();

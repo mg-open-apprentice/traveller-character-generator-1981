@@ -5,6 +5,10 @@ from character_generator import Character
 
 app = Flask(__name__)
 
+def ordinal(n):
+    # Returns ordinal string for 1, 2, 3, ...
+    return "%d%s" % (n, "tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4]) if n > 0 else "0"
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
@@ -29,6 +33,7 @@ def create_character():
     # Add empty characteristics and revealed list
     char_data['characteristics'] = {}
     char_data['revealed'] = []
+    char_data['terms_served'] = 0
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify({
@@ -145,6 +150,45 @@ def attempt_enlistment():
         'enlistment_roll': enlistment_roll,
         'modifier': modifier
     })
+
+@app.route('/term_info', methods=['GET'])
+def term_info():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    term_number = char_data.get('terms_served', 0) + 1
+    return jsonify({
+        'term_number': term_number,
+        'term_ordinal': ordinal(term_number)
+    })
+
+@app.route('/term_survival', methods=['POST'])
+def term_survival():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    characteristics = char_data.get('characteristics', {})
+    # Map to short keys for check_survival_detailed
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_survival = {char_map[k]: v for k, v in characteristics.items()}
+    result = Character.check_survival_detailed(service, char_for_survival)
+    # Save outcome to character data (for now, just log survived/injured)
+    char_data['last_survival'] = result
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True) 

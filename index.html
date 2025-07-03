@@ -9,9 +9,8 @@
 <body>
     <div class="layout">
         <aside class="sidebar">
-            <div class="sidebar-section">
+            <div class="sidebar-section" id="create-section">
                 <button id="create-btn">Create Character</button>
-                <button id="delete-btn">Delete Character</button>
             </div>
             <hr>
             <div class="sidebar-section" id="attribute-buttons">
@@ -32,6 +31,18 @@
                 <button id="scouts-btn">Scouts</button>
                 <button id="merchants-btn">Merchants</button>
                 <button id="others-btn">Others</button>
+            </div>
+            <div class="sidebar-section" id="term-section" style="display:none;">
+                <div class="sidebar-header" id="term-title">Term 1</div>
+                <button id="survival-btn">Survival</button>
+                <button id="promotion-btn">Promotion</button>
+                <button id="skills-btn">Skills</button>
+                <button id="ageing-btn">Ageing</button>
+                <button id="reenlistment-btn">Re-enlistment</button>
+            </div>
+            <div class="sidebar-bottom">
+                <hr>
+                <button id="delete-btn">Delete Character</button>
             </div>
         </aside>
         <main class="main-content">
