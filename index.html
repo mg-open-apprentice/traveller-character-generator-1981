@@ -9,10 +9,13 @@
 <body>
     <div class="layout">
         <aside class="sidebar">
-            <button id="create-btn">Create Character</button>
-            <button id="delete-btn">Delete Character</button>
+            <div class="sidebar-section">
+                <button id="create-btn">Create Character</button>
+                <button id="delete-btn">Delete Character</button>
+            </div>
             <hr>
-            <div id="attribute-buttons">
+            <div class="sidebar-section" id="attribute-buttons">
+                <div class="sidebar-header">Characteristics</div>
                 <button id="strength-btn">Strength</button>
                 <button id="dexterity-btn">Dexterity</button>
                 <button id="endurance-btn">Endurance</button>
@@ -20,7 +23,9 @@
                 <button id="education-btn">Education</button>
                 <button id="social-btn">Social</button>
             </div>
-            <div id="service-buttons" style="display:none;">
+            <hr>
+            <div class="sidebar-section" id="service-buttons" style="display:none;">
+                <div class="sidebar-header">Service Selection</div>
                 <button id="navy-btn">Navy</button>
                 <button id="marines-btn">Marines</button>
                 <button id="army-btn">Army</button>

@@ -37,9 +37,13 @@ document.addEventListener('DOMContentLoaded', function() {
     let characterName = '';
     let characterAge = '';
     let revealed = [];
+    let serviceAssigned = false;
 
     function updateButtonVisibility() {
-        if (revealed.length === 6) {
+        if (serviceAssigned) {
+            attributeDiv.style.display = 'none';
+            serviceDiv.style.display = 'none';
+        } else if (revealed.length === 6) {
             attributeDiv.style.display = 'none';
             serviceDiv.style.display = 'block';
         } else {
@@ -55,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
         attributeDiv.style.display = 'block';
         serviceDiv.style.display = 'none';
         revealed = [];
+        serviceAssigned = false;
         try {
             const response = await fetch('/create_character', {
                 method: 'POST',
@@ -80,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
         attributeDiv.style.display = 'block';
         serviceDiv.style.display = 'none';
         revealed = [];
+        serviceAssigned = false;
         try {
             const response = await fetch('/delete_character', {
                 method: 'POST',
@@ -139,6 +145,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     msg += `\nDrafted to: ${data.service}`;
                 }
                 resultDiv.textContent = msg;
+                serviceAssigned = true;
+                updateButtonVisibility();
             } catch (err) {
                 resultDiv.textContent = 'Error attempting enlistment.';
             }
