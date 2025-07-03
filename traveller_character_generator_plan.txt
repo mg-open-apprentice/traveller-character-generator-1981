@@ -1,0 +1,27 @@
+step 1 - what do you want to build?
+
+I want to build a character generator for the old-school science fiction role-playing game 'traveller' using the 1981 'classic traveller' version of the rules.
+
+The character generator will support the user through the intial generation of the character, guiding decisions of the character through the terms of their career and mustering out of their service at the end of the character generation process
+
+step 2
+
+The character generator will run in a webbrowser.
+The user interface will have a single-page design
+While the user's character is being generated progress will be stored in a json file
+When the character generation sequence is complete the user will be able to download a character sheet providing a summary of their character.
+
+The app will use the following technologies:
+
+Structure of the interface: HTML
+Look and feel of the interface: CSS
+Dynamic behavior of the interface: JavaScript
+Backend logic: Python
+(Semi) persistent store: json
+
+step 3
+
+The backend logic for the generator already exists and I do not want any un-necessary duplication. The app should control interface and routing. The 'character_generator.py' code will process user and other interface inputs to compute intermediate results during the character generation and compile the end-state output for the character.
+
+A semi-persistent record of the current state of the character being generated will also be generated and maintained during the character generation process.
+

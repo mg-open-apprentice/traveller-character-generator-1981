@@ -1,1 +1,1 @@
-{"name": "Seren Andromeda", "age": 18, "characteristics": {"str": 7, "dex": 3, "end": 11, "int": 7, "edu": 11, "soc": 10}, "creation_complete": false, "creation_phase": "characteristics"}
+{"age": 18, "terms_served": 0, "characteristics": {}, "career": null, "name": "Maximus Ion", "career_history": [], "skills": {}, "mustering_out_benefits": {"cash": 0, "items": []}, "aging_log": [], "term_log": [], "skill_acquisition_log": [], "commissioned": false, "rank": 0, "drafted": false, "promotions": 0, "generation_log": []}
