@@ -7,11 +7,27 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Traveller Character Generator</h1>
-        <button id="create-btn">Create Character</button>
-        <button id="delete-btn">Delete Character</button>
-        <div id="result"></div>
+    <div class="layout">
+        <aside class="sidebar">
+            <h2>Menu</h2>
+            <button id="create-btn">Create Character</button>
+            <button id="delete-btn">Delete Character</button>
+            <div id="reveal-buttons" style="display:none;">
+                <h3>Attributes</h3>
+                <button id="strength-btn">Strength</button>
+                <button id="dexterity-btn">Dexterity</button>
+                <button id="endurance-btn">Endurance</button>
+                <button id="intelligence-btn">Intelligence</button>
+                <button id="education-btn">Education</button>
+                <button id="social-btn">Social</button>
+            </div>
+        </aside>
+        <main class="main-content">
+            <h1>Traveller Character Generator</h1>
+            <div id="summary"></div>
+            <div id="upp-display"></div>
+            <div id="result"></div>
+        </main>
     </div>
     <script src="script.js"></script>
 </body>
