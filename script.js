@@ -123,6 +123,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (last_promotion && Object.keys(last_promotion).length > 0 && last_promotion.applicable !== false) {
                 logHtml += `<div>Promotion: Roll ${last_promotion.roll} + Modifier ${last_promotion.modifier} = Total ${last_promotion.total} (Need ${last_promotion.target}) → ${last_promotion.success ? 'PROMOTED' : 'FAILED'}</div>`;
             }
+            
+            // Add skill breakdown if available
+            if (window.skillBreakdown && Object.keys(window.skillBreakdown).length > 0) {
+                logHtml += `<div style="margin-top: 10px; font-weight: bold;">Skills Available:</div>`;
+                const total = Object.values(window.skillBreakdown).reduce((sum, val) => sum + val, 0);
+                logHtml += `<div>Total: ${total} skills</div>`;
+                if (window.skillBreakdown.survival !== undefined) {
+                    logHtml += `<div>Survival: ${window.skillBreakdown.survival} skills</div>`;
+                }
+                if (window.skillBreakdown.commission !== undefined) {
+                    logHtml += `<div>Commission: ${window.skillBreakdown.commission} skills</div>`;
+                }
+                if (window.skillBreakdown.promotion !== undefined) {
+                    logHtml += `<div>Promotion: ${window.skillBreakdown.promotion} skills</div>`;
+                }
+            }
+            
             logDiv.innerHTML = logHtml;
         }
     }
@@ -138,6 +155,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.style.display = 'block';
                 }
             }
+        }
+    }
+
+    function updateTermButtons(buttonStatus) {
+        // Hide survival button if survival is completed
+        if (survivalBtn) {
+            survivalBtn.style.display = buttonStatus.survival_completed ? 'none' : 'block';
+        }
+        
+        // Hide commission button if commission is completed
+        if (commissionBtn) {
+            commissionBtn.style.display = buttonStatus.commission_completed ? 'none' : 'block';
+        }
+        
+        // Hide promotion button if promotion is completed
+        if (promotionBtn) {
+            promotionBtn.style.display = buttonStatus.promotion_completed ? 'none' : 'block';
         }
     }
 
@@ -174,6 +208,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 return res.json();
             })
             .then(termData => updateTermInfo(termData));
+        
+        // Fetch button status and update button visibility
+        fetch('/term_button_status')
+            .then(res => {
+                if (!res.ok) return {};
+                return res.json();
+            })
+            .then(buttonStatus => {
+                if (buttonStatus && Object.keys(buttonStatus).length > 0) {
+                    updateTermButtons(buttonStatus);
+                }
+            });
+        
+        // Calculate skills if term checks are completed
+        calculateTermSkills();
+    }
+
+    // Calculate skills based on term outcomes
+    function calculateTermSkills() {
+        fetch('/calculate_term_skills', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => {
+            if (!res.ok) return {};
+            return res.json();
+        })
+        .then(skillData => {
+            if (skillData && skillData.skill_breakdown) {
+                window.skillBreakdown = skillData.skill_breakdown;
+                // Update the term info display to show skill breakdown
+                updateTermInfo({});
+            }
+        });
     }
 
     // --- Workflow State ---
@@ -212,14 +280,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btn) btn.addEventListener('click', async function() {
         revealed = [];
         serviceAssigned = false;
-        updateButtonVisibility();
         try {
             const response = await fetch('/create_character', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
-            refreshAllUI();
+            // Disable create button after successful character creation
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            // Reset term button visibility for new character
+            if (survivalBtn) survivalBtn.style.display = 'block';
+            if (commissionBtn) commissionBtn.style.display = 'block';
+            if (promotionBtn) promotionBtn.style.display = 'block';
+            // Refresh UI first to get character data
+            await refreshAllUI();
+            // Force show characteristic buttons after character creation
+            if (attributeDiv) attributeDiv.style.display = 'block';
+            updateCharacteristicButtons([], true);
         } catch (err) {
             alert('Error creating character.');
         }
@@ -228,13 +306,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (deleteBtn) deleteBtn.addEventListener('click', async function() {
         revealed = [];
         serviceAssigned = false;
-        updateButtonVisibility();
         try {
             const response = await fetch('/delete_character', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
+            // Re-enable create button after character deletion
+            if (btn) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
             // Clear all UI fields
             [charTitle, charName, charService, charRank, charUPP, charAge, charTerms, charCash, charStarship, charWeapons, charTAS].forEach(el => { if (el) el.textContent = ''; });
             [currentTerm, survivalOutcome, commissioningOutcome, promotionOutcome, termSkillsEligibility, commissionSkillsEligibility, promotionSkillsEligibility, ageingEffects, reenlistmentOutcome].forEach(el => { if (el) el.textContent = ''; });
@@ -242,6 +324,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (logDiv) logDiv.innerHTML = '';
             updateCharacteristicButtons([], false);
             window.lastStatusData = null;
+            window.skillBreakdown = null;
+            // Reset term button visibility
+            if (survivalBtn) survivalBtn.style.display = 'block';
+            if (commissionBtn) commissionBtn.style.display = 'block';
+            if (promotionBtn) promotionBtn.style.display = 'block';
             // Hide attribute, service, and term sections
             if (attributeDiv) attributeDiv.style.display = 'none';
             if (serviceDiv) serviceDiv.style.display = 'none';
@@ -308,6 +395,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
+            // Hide the survival button immediately after successful check
+            if (survivalBtn) survivalBtn.style.display = 'none';
             updateButtonVisibility();
             refreshAllUI();
         } catch (err) {
@@ -322,6 +411,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
+            // Hide the commission button immediately after successful check
+            if (commissionBtn) commissionBtn.style.display = 'none';
             updateButtonVisibility();
             refreshAllUI();
         } catch (err) {
@@ -336,6 +427,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
+            // Hide the promotion button immediately after successful check
+            if (promotionBtn) promotionBtn.style.display = 'none';
             updateButtonVisibility();
             refreshAllUI();
         } catch (err) {

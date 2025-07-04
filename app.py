@@ -3,6 +3,11 @@ import os
 import json
 from character_generator import Character
 
+# Delete current_character.json on app startup
+json_path = 'current_character.json'
+if os.path.exists(json_path):
+    os.remove(json_path)
+
 app = Flask(__name__)
 
 def ordinal(n):
@@ -33,9 +38,6 @@ def ordinal(n):
 
 @app.route('/', methods=['GET'])
 def index():
-    json_path = 'current_character.json'
-    if os.path.exists(json_path):
-        os.remove(json_path)
     return send_from_directory('.', 'index.html')
 
 @app.route('/script.js')
@@ -188,6 +190,9 @@ def attempt_enlistment():
     char_data['enlistment_roll'] = enlistment_roll
     char_data['enlistment_required'] = required_roll
     char_data['enlistment_modifier'] = modifier
+    # Set drafted flag if character was drafted
+    if enlistment_status == 'drafted':
+        char_data['drafted'] = True
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify({
@@ -408,6 +413,11 @@ def character_status():
         'tas': None,  # Add logic if you have TAS info
         'social': characteristics.get('social', 0),
         'revealed': char_data.get('revealed', []),
+        # Add roll data for bottom panel display
+        'last_survival': char_data.get('last_survival', {}),
+        'last_commission': char_data.get('last_commission', {}),
+        'last_promotion': char_data.get('last_promotion', {}),
+        'last_reenlistment': char_data.get('last_reenlistment', ''),
         # Add any other fields you want to display
     })
 
@@ -418,9 +428,14 @@ def calculate_term_skills():
         return jsonify({'error': 'No character found'}), 400
     with open(json_path, 'r') as f:
         char_data = json.load(f)
+    
     service = char_data.get('service')
     characteristics = char_data.get('characteristics', {})
     terms_served = char_data.get('terms_served', 0)
+    survival_completed = char_data.get('survival_completed', False)
+    commission_completed = char_data.get('commission_completed', False)
+    promotion_completed = char_data.get('promotion_completed', False)
+    
     # Map to short keys for skill calculation
     char_map = {
         'strength': 'str',
@@ -431,16 +446,72 @@ def calculate_term_skills():
         'social': 'soc'
     }
     char_for_skills = {char_map.get(k, k): v for k, v in characteristics.items()}
-    # Placeholder: return empty tables and 0 skills
-    available_tables = []
-    remaining_skills = 0
+    
+    # Calculate skills based on outcomes
+    total_skills = 0
+    skill_breakdown = {}
+    
+    # 1. Survival skills
+    if survival_completed:
+        last_survival = char_data.get('last_survival', {})
+        survival_outcome = last_survival.get('outcome', 'survived')
+        
+        if survival_outcome == 'survived':
+            # Scouts always get 2 skills, others get 2 for first term, 1 for subsequent
+            if service == 'Scouts':
+                survival_skills = 2
+            else:
+                survival_skills = 2 if terms_served == 0 else 1
+            total_skills += survival_skills
+            skill_breakdown['survival'] = survival_skills
+        elif survival_outcome == 'injured':
+            # Injured characters get no skills and must muster out
+            skill_breakdown['survival'] = 0
+        elif survival_outcome == 'died':
+            # Dead characters get no skills
+            skill_breakdown['survival'] = 0
+    
+    # 2. Commission skills
+    if commission_completed:
+        last_commission = char_data.get('last_commission', {})
+        commission_success = last_commission.get('success', False)
+        
+        if commission_success:
+            commission_skills = 1
+            total_skills += commission_skills
+            skill_breakdown['commission'] = commission_skills
+        else:
+            skill_breakdown['commission'] = 0
+    
+    # 3. Promotion skills
+    if promotion_completed:
+        last_promotion = char_data.get('last_promotion', {})
+        promotion_success = last_promotion.get('success', False)
+        
+        if promotion_success:
+            promotion_skills = 1
+            total_skills += promotion_skills
+            skill_breakdown['promotion'] = promotion_skills
+        else:
+            skill_breakdown['promotion'] = 0
+    
+    # Get available skill tables
+    available_tables = ['personal', 'service', 'advanced']
+    if characteristics.get('education', 0) >= 8:
+        available_tables.append('advanced_education')
+    
+    # Save to character data
     char_data['skill_tables'] = available_tables
-    char_data['remaining_skills'] = remaining_skills
+    char_data['remaining_skills'] = total_skills
+    char_data['skill_breakdown'] = skill_breakdown
+    
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
+    
     return jsonify({
         'available_tables': available_tables,
-        'remaining_skills': remaining_skills
+        'remaining_skills': total_skills,
+        'skill_breakdown': skill_breakdown
     })
 
 @app.route('/available_skill_tables', methods=['GET'])
@@ -486,8 +557,7 @@ def term_skill():
     if 'skills' not in char_data:
         char_data['skills'] = {}
     if skill_result and isinstance(skill_result, dict) and 'skill' in skill_result:
-        if skill_result['skill'] not in char_data['skills']:
-            char_data['skills'][skill_result['skill']] = 0
+        char_data['skills'].setdefault(skill_result['skill'], 0)
         char_data['skills'][skill_result['skill']] += 1
     # Update remaining skills and remove used table
     char_data['remaining_skills'] = char_data.get('remaining_skills', 0) - 1
