@@ -31,8 +31,11 @@ def ordinal(n):
     }
     return ordinal_dict.get(n, f"{n}th") if n > 0 else "Zero"
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
+    json_path = 'current_character.json'
+    if os.path.exists(json_path):
+        os.remove(json_path)
     return send_from_directory('.', 'index.html')
 
 @app.route('/script.js')
@@ -52,10 +55,32 @@ def create_character():
     character.name = character.get_random_name()
     character.age = 18
     char_data = safe_dict(character)
-    # Add empty characteristics and revealed list
+    # Reset ALL character state for new character - complete purge as per design document
     char_data['characteristics'] = {}
     char_data['revealed'] = []
     char_data['terms_served'] = 0
+    char_data['service'] = None
+    char_data['enlistment_status'] = None
+    char_data['enlistment_roll'] = None
+    char_data['enlistment_required'] = None
+    char_data['enlistment_modifier'] = None
+    char_data['is_commissioned'] = False
+    char_data['commission_succeeded'] = False
+    char_data['promotion_completed'] = False
+    char_data['reenlistment_completed'] = False
+    char_data['survival_completed'] = False
+    char_data['commission_completed'] = False
+    char_data['last_survival'] = {}
+    char_data['last_commission'] = {}
+    char_data['last_promotion'] = {}
+    char_data['last_reenlistment'] = {}
+    char_data['rank'] = 0  # Reset rank to 0 for new character
+    char_data['age'] = 18  # Reset age to 18 for new character
+    char_data['name'] = character.name  # Ensure name is set
+    char_data['career'] = None  # Reset career field
+    char_data['skills'] = {}  # Reset skills (for future implementation)
+    char_data['skill_tables'] = []  # Reset skill tables (for future implementation)
+    char_data['remaining_skills'] = 0  # Reset remaining skills (for future implementation)
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify({
@@ -249,6 +274,7 @@ def term_commission():
     # If commission succeeded, mark character as commissioned permanently
     if result.get('success', False):
         char_data['is_commissioned'] = True
+        char_data['rank'] = 1  # Set initial rank to 1 when commissioned
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify(result)
@@ -271,7 +297,7 @@ def term_promotion():
         char_data = json.load(f)
     service = char_data.get('service')
     characteristics = char_data.get('characteristics', {})
-    current_rank = char_data.get('current_rank', 0)  # Default to 0 if no rank
+    current_rank = char_data.get('rank', 0)  # Use 'rank' field instead of 'current_rank'
     # Map to short keys for check_promotion_detailed
     char_map = {
         'strength': 'str',
@@ -286,6 +312,9 @@ def term_promotion():
     # Save outcome to character data and mark promotion as completed
     char_data['last_promotion'] = result
     char_data['promotion_completed'] = True
+    # If promotion succeeded, increment rank
+    if result.get('success', False):
+        char_data['rank'] = result.get('new_rank', current_rank)
     with open(json_path, 'w') as f:
         json.dump(char_data, f)
     return jsonify(result)
@@ -349,6 +378,127 @@ def term_reenlistment():
         'terms_served': char_data.get('terms_served', 0),
         'age': char_data.get('age', 18)
     })
+
+
+
+@app.route('/character_status', methods=['GET'])
+def character_status():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    # Build UPP string in pseudo-hex
+    characteristics = char_data.get('characteristics', {})
+    upp_order = ['strength', 'dexterity', 'endurance', 'intelligence', 'education', 'social']
+    upp = ''.join([
+        hex(characteristics.get(attr, 0))[2:].upper() if characteristics.get(attr) is not None else '-'
+        for attr in upp_order
+    ])
+    return jsonify({
+        'name': char_data.get('name'),
+        'service': char_data.get('service'),
+        'rank': char_data.get('rank'),
+        'upp': upp,
+        'age': char_data.get('age'),
+        'terms': char_data.get('terms_served'),
+        'cash': char_data.get('mustering_out_benefits', {}).get('cash', 0),
+        'starship': None,  # Add logic if you have starship info
+        'weapons': ', '.join(char_data.get('mustering_out_benefits', {}).get('items', [])),
+        'tas': None,  # Add logic if you have TAS info
+        'social': characteristics.get('social', 0),
+        'revealed': char_data.get('revealed', []),
+        # Add any other fields you want to display
+    })
+
+@app.route('/calculate_term_skills', methods=['POST'])
+def calculate_term_skills():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    characteristics = char_data.get('characteristics', {})
+    terms_served = char_data.get('terms_served', 0)
+    # Map to short keys for skill calculation
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_skills = {char_map.get(k, k): v for k, v in characteristics.items()}
+    # Placeholder: return empty tables and 0 skills
+    available_tables = []
+    remaining_skills = 0
+    char_data['skill_tables'] = available_tables
+    char_data['remaining_skills'] = remaining_skills
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify({
+        'available_tables': available_tables,
+        'remaining_skills': remaining_skills
+    })
+
+@app.route('/available_skill_tables', methods=['GET'])
+def available_skill_tables():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    return jsonify({
+        'available_tables': char_data.get('skill_tables', []),
+        'remaining_skills': char_data.get('remaining_skills', 0)
+    })
+
+@app.route('/term_skill', methods=['POST'])
+def term_skill():
+    json_path = 'current_character.json'
+    if not os.path.exists(json_path):
+        return jsonify({'error': 'No character found'}), 400
+    data = request.get_json()
+    table_name = data.get('table')
+    with open(json_path, 'r') as f:
+        char_data = json.load(f)
+    service = char_data.get('service')
+    characteristics = char_data.get('characteristics', {})
+    # Map to short keys for skill rolling
+    char_map = {
+        'strength': 'str',
+        'dexterity': 'dex',
+        'endurance': 'end',
+        'intelligence': 'int',
+        'education': 'edu',
+        'social': 'soc'
+    }
+    char_for_skills = {char_map[k]: v for k, v in characteristics.items()}
+    # Create a temporary character object for skill rolling
+    temp_char = Character()
+    temp_char.characteristics = char_for_skills
+    temp_char.career = service
+    # Roll for skill
+    skill_result = temp_char.roll_for_skills(table_name) if hasattr(temp_char, 'roll_for_skills') else None
+    # Add skill to character data
+    if 'skills' not in char_data:
+        char_data['skills'] = {}
+    if skill_result and isinstance(skill_result, dict) and 'skill' in skill_result:
+        if skill_result['skill'] not in char_data['skills']:
+            char_data['skills'][skill_result['skill']] = 0
+        char_data['skills'][skill_result['skill']] += 1
+    # Update remaining skills and remove used table
+    char_data['remaining_skills'] = char_data.get('remaining_skills', 0) - 1
+    skill_tables = char_data.get('skill_tables', [])
+    if table_name in skill_tables:
+        skill_tables.remove(table_name)
+    char_data['skill_tables'] = skill_tables
+    # Save updated character data
+    with open(json_path, 'w') as f:
+        json.dump(char_data, f)
+    return jsonify(skill_result if skill_result else {'skill': None, 'error': 'Skill roll not implemented'})
 
 if __name__ == '__main__':
     app.run(debug=True) 

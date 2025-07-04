@@ -37,24 +37,51 @@
                 <button id="survival-btn">Survival</button>
                 <button id="commission-btn">Commission</button>
                 <button id="promotion-btn">Promotion</button>
-                <button id="skills-btn">Skills</button>
+                <div class="sidebar-section" id="skills-section" style="display:none;">
+                    <div class="sidebar-header">Skills</div>
+                    <div id="skills-info"></div>
+                    <div id="skills-buttons">
+                        <!-- Skills buttons will be dynamically generated here -->
+                    </div>
+                </div>
                 <button id="ageing-btn">Ageing</button>
                 <button id="reenlistment-btn">Re-enlistment</button>
             </div>
+
             <div class="sidebar-bottom">
                 <hr>
                 <button id="delete-btn">Delete Character</button>
             </div>
         </aside>
         <main class="main-content">
-            <div class="upper-panel">
+            <div class="permanent-record">
                 <h1>Traveller Character Generator</h1>
-                <div id="summary"></div>
-                <div id="upp-display"></div>
-                <div id="result"></div>
+                <div id="character-title"></div>
+                <div id="character-name"></div>
+                <div id="character-service"></div>
+                <div id="character-rank"></div>
+                <div id="character-upp"></div>
+                <div id="character-age"></div>
+                <div id="character-terms"></div>
+                <div id="character-cash"></div>
+                <div id="character-starship"></div>
+                <div id="character-weapons"></div>
+                <div id="character-tas"></div>
             </div>
-            <div class="lower-panel">
-                <!-- For future: per-term details -->
+            <hr class="main-separator">
+            <div class="term-info">
+                <div id="current-term"></div>
+                <div id="survival-outcome"></div>
+                <div id="commissioning-outcome"></div>
+                <div id="promotion-outcome"></div>
+                <div id="skills-section">
+                    <div id="term-skills-eligibility"></div>
+                    <div id="commission-skills-eligibility"></div>
+                    <div id="promotion-skills-eligibility"></div>
+                </div>
+                <div id="ageing-effects"></div>
+                <div id="reenlistment-outcome"></div>
+                <div id="term-outcome-log"></div>
             </div>
         </main>
     </div>

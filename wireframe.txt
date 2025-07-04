@@ -1,0 +1,29 @@
+
+----------------------------------------------------------------------------------------|
+create character	|   								|
+			|	<title> <name> <service> <rank>	<upp>	age <age>	|
+strength		|	terms <terms>						|
+dexterity		|	skills <skills>						|
+endurance		|								|
+intelligence		|	cash <cash> retirement pay <retirement pay>		|
+education		|	<starship>						|
+social			|	<weapon>						|
+			|	<tas>							|
+navy			|								|
+marines			|								|
+army			|---------------------------------------------------------------|
+scouts			|								|
+merchants		|	term							|
+others			|	survival						|
+			|	commission						|
+survival		|	promotion						|
+commission		|	skills							|
+promotion		|		term skills					|
+skills			|		commissioning & promotion skills		|
+ageing			|		automatic skills				|
+re-enlistment		|	ageing							|
+			|	term completion						|
+muster out		|	re-enlistment						|
+			|								|
+delete character	|								|
+----------------------------------------------------------------------------------------|

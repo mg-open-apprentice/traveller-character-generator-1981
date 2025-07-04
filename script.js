@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Sidebar and workflow controls
     const btn = document.getElementById('create-btn');
     const deleteBtn = document.getElementById('delete-btn');
-    const resultDiv = document.getElementById('result');
-    const summaryDiv = document.getElementById('summary');
-    const uppDisplay = document.getElementById('upp-display');
     const attributeDiv = document.getElementById('attribute-buttons');
     const serviceDiv = document.getElementById('service-buttons');
     const termSection = document.getElementById('term-section');
@@ -40,286 +38,253 @@ document.addEventListener('DOMContentLoaded', function() {
         others: 'Others'
     };
 
-    let characterName = '';
-    let characterAge = '';
+    // Permanent record fields
+    const charTitle = document.getElementById('character-title');
+    const charName = document.getElementById('character-name');
+    const charService = document.getElementById('character-service');
+    const charRank = document.getElementById('character-rank');
+    const charUPP = document.getElementById('character-upp');
+    const charAge = document.getElementById('character-age');
+    const charTerms = document.getElementById('character-terms');
+    const charCash = document.getElementById('character-cash');
+    const charStarship = document.getElementById('character-starship');
+    const charWeapons = document.getElementById('character-weapons');
+    const charTAS = document.getElementById('character-tas');
+
+    // Term info fields
+    const currentTerm = document.getElementById('current-term');
+    const survivalOutcome = document.getElementById('survival-outcome');
+    const commissioningOutcome = document.getElementById('commissioning-outcome');
+    const promotionOutcome = document.getElementById('promotion-outcome');
+    const termSkillsEligibility = document.getElementById('term-skills-eligibility');
+    const commissionSkillsEligibility = document.getElementById('commission-skills-eligibility');
+    const promotionSkillsEligibility = document.getElementById('promotion-skills-eligibility');
+    const ageingEffects = document.getElementById('ageing-effects');
+    const reenlistmentOutcome = document.getElementById('reenlistment-outcome');
+
+    // Utility: Safely set text content
+    function safeSetText(element, text) {
+        if (element) element.textContent = text;
+    }
+
+    // Utility: Show a message to the user
+    function showUserMessage(msg) {
+        // Remove the user message functionality entirely
+    }
+
+    function clearUserMessage() {
+        // Remove the user message functionality entirely
+    }
+
+    // --- UI Update Functions ---
+
+    function updatePermanentRecord(data) {
+        // Title only if social >= 11
+        safeSetText(charTitle, (data.social && data.social >= 11) ? (data.title || "Noble") : "");
+        safeSetText(charName, data.name ? `Name: ${data.name}` : "");
+        safeSetText(charService, data.service ? `Service: ${data.service}` : "");
+        safeSetText(charRank, data.rank !== undefined && data.rank !== null ? `Rank: ${data.rank}` : "");
+        // Only show UPP if all characteristics are revealed
+        if (data.revealed && data.revealed.length === 6 && data.upp) {
+            safeSetText(charUPP, `UPP: ${data.upp}`);
+        } else {
+            safeSetText(charUPP, "UPP: ------");
+        }
+        safeSetText(charAge, data.age !== undefined && data.age !== null ? `Age: ${data.age}` : "");
+        safeSetText(charTerms, data.terms !== undefined && data.terms !== null ? `Terms Served: ${data.terms}` : "");
+        safeSetText(charCash, data.cash !== undefined && data.cash !== null ? `Cash: ${data.cash}` : "");
+        safeSetText(charStarship, data.starship ? `Starship: ${data.starship}` : "");
+        safeSetText(charWeapons, data.weapons ? `Weapons: ${data.weapons}` : "");
+        safeSetText(charTAS, data.tas ? `TAS: ${data.tas}` : "");
+    }
+
+    function updateTermInfo(termData) {
+        safeSetText(currentTerm, termData.term ? `Current Term: ${termData.term}` : "");
+        safeSetText(survivalOutcome, termData.survival ? `Survival: ${termData.survival}` : "");
+        safeSetText(commissioningOutcome, termData.commission ? `Commission: ${termData.commission}` : "");
+        safeSetText(promotionOutcome, termData.promotion ? `Promotion: ${termData.promotion}` : "");
+        safeSetText(termSkillsEligibility, termData.termSkills ? `Term Skills: ${termData.termSkills}` : "");
+        safeSetText(commissionSkillsEligibility, termData.commissionSkills ? `Commission Skills: ${termData.commissionSkills}` : "");
+        safeSetText(promotionSkillsEligibility, termData.promotionSkills ? `Promotion Skills: ${termData.promotionSkills}` : "");
+        safeSetText(ageingEffects, termData.ageing ? `Ageing: ${termData.ageing}` : "");
+        safeSetText(reenlistmentOutcome, termData.reenlistment ? `Re-enlistment: ${termData.reenlistment}` : "");
+
+        // Display a log of the most recent survival, commission, and promotion rolls/results
+        const logDiv = document.getElementById('term-outcome-log');
+        if (logDiv && window.lastStatusData) {
+            const { last_survival, last_commission, last_promotion } = window.lastStatusData;
+            let logHtml = '';
+            if (last_survival && Object.keys(last_survival).length > 0) {
+                logHtml += `<div>Survival: Roll ${last_survival.roll} + Bonus ${last_survival.bonus} = Total ${last_survival.total} (Need ${last_survival.required}) → ${last_survival.outcome ? last_survival.outcome.toUpperCase() : ''}</div>`;
+            }
+            if (last_commission && Object.keys(last_commission).length > 0 && last_commission.applicable !== false) {
+                logHtml += `<div>Commission: Roll ${last_commission.roll} + Modifier ${last_commission.modifier} = Total ${last_commission.total} (Need ${last_commission.target}) → ${last_commission.success ? 'COMMISSIONED' : 'FAILED'}</div>`;
+            }
+            if (last_promotion && Object.keys(last_promotion).length > 0 && last_promotion.applicable !== false) {
+                logHtml += `<div>Promotion: Roll ${last_promotion.roll} + Modifier ${last_promotion.modifier} = Total ${last_promotion.total} (Need ${last_promotion.target}) → ${last_promotion.success ? 'PROMOTED' : 'FAILED'}</div>`;
+            }
+            logDiv.innerHTML = logHtml;
+        }
+    }
+
+    function updateCharacteristicButtons(revealedList, characterExists) {
+        for (const [key, btn] of Object.entries(attrButtons)) {
+            if (btn) {
+                if (!characterExists) {
+                    btn.style.display = 'none';
+                } else if (revealedList && revealedList.includes(key)) {
+                    btn.style.display = 'none';
+                } else {
+                    btn.style.display = 'block';
+                }
+            }
+        }
+    }
+
+    function showCreatePrompt() {
+        const charPanel = document.querySelector('.permanent-record');
+        if (charPanel) {
+            charPanel.innerHTML = '<div style="color:#b00; font-weight:bold;">No character found. Please create a character.</div>';
+        }
+    }
+
+    // Fetch and update all UI after any state change
+    function refreshAllUI() {
+        fetch('/character_status')
+            .then(res => {
+                if (!res.ok) {
+                    updateCharacteristicButtons([], false); // Hide all
+                    // No message shown
+                    window.lastStatusData = null;
+                    return {};
+                }
+                // No message shown
+                return res.json();
+            })
+            .then(data => {
+                if (data && data.name) {
+                    updatePermanentRecord(data);
+                    updateCharacteristicButtons(data.revealed || [], true);
+                    window.lastStatusData = data;
+                }
+            });
+        fetch('/term_info')
+            .then(res => {
+                if (!res.ok) return {};
+                return res.json();
+            })
+            .then(termData => updateTermInfo(termData));
+    }
+
+    // --- Workflow State ---
+
     let revealed = [];
     let serviceAssigned = false;
 
-    function updateTermButtonVisibility() {
-        fetch('/term_button_status')
-            .then(res => res.json())
-            .then(data => {
-                // Hide survival button if completed
-                if (data.survival_completed) {
-                    survivalBtn.style.display = 'none';
-                } else {
-                    survivalBtn.style.display = 'block';
-                }
-                
-                // Hide commission button if completed OR if character is already commissioned
-                if (data.commission_completed || data.is_commissioned) {
-                    commissionBtn.style.display = 'none';
-                } else {
-                    commissionBtn.style.display = 'block';
-                }
-                
-                // Hide promotion button if commission failed OR if promotion completed
-                if ((data.commission_completed && !data.commission_succeeded) || data.promotion_completed) {
-                    promotionBtn.style.display = 'none';
-                } else {
-                    promotionBtn.style.display = 'block';
-                }
-                
-                // Hide skills button (not implemented yet)
-                document.getElementById('skills-btn').style.display = 'none';
-                
-                // Hide ageing button until 4th term
-                fetch('/term_info')
-                    .then(res => res.json())
-                    .then(termData => {
-                        if (termData.term_number >= 4) {
-                            document.getElementById('ageing-btn').style.display = 'block';
-                        } else {
-                            document.getElementById('ageing-btn').style.display = 'none';
-                        }
-                    });
-            });
-    }
+    // --- Button Visibility Logic (unchanged, but can be refactored for clarity) ---
 
-    function displayTermOutcomes() {
-        fetch('/term_button_status')
-            .then(res => res.json())
-            .then(data => {
-                let outcomes = [];
-                let promises = [];
-                
-                // Add survival outcome if completed (1st)
-                if (data.survival_completed) {
-                    promises.push(
-                        fetch('/term_survival', { method: 'GET' })
-                            .then(res => res.json())
-                            .then(survivalData => {
-                                return `Survival: ${survivalData.outcome || (survivalData.survived ? 'Survived' : 'Injured')} (Roll: ${survivalData.roll}, Bonus: ${survivalData.bonus}, Total: ${survivalData.total}, Required: ${survivalData.required})`;
-                            })
-                    );
-                }
-                
-                // Add commission outcome if completed (2nd)
-                if (data.commission_completed) {
-                    promises.push(
-                        fetch('/term_commission', { method: 'GET' })
-                            .then(res => res.json())
-                            .then(commissionData => {
-                                return `Commission: ${commissionData.success ? 'Commissioned' : 'Not Commissioned'} (Roll: ${commissionData.roll}, Bonus: ${commissionData.modifier}, Total: ${commissionData.total}, Required: ${commissionData.target})`;
-                            })
-                    );
-                }
-                
-                // Add promotion outcome if completed (3rd)
-                if (data.promotion_completed) {
-                    promises.push(
-                        fetch('/term_promotion', { method: 'GET' })
-                            .then(res => res.json())
-                            .then(promotionData => {
-                                return `Promotion: ${promotionData.success ? 'Promoted' : 'Not Promoted'} (Roll: ${promotionData.roll}, Bonus: ${promotionData.modifier}, Total: ${promotionData.total}, Required: ${promotionData.target})`;
-                            })
-                    );
-                }
-                
-                // Wait for all promises to resolve and display in order
-                Promise.all(promises).then(results => {
-                    if (results.length > 0) {
-                        resultDiv.innerHTML = results.join('<br>');
-                    } else {
-                        resultDiv.textContent = '';
-                    }
-                });
-            });
-    }
-
-    function updateOutcomesDisplay(outcomes) {
-        if (outcomes.length > 0) {
-            resultDiv.innerHTML = outcomes.join('<br>');
-        }
-    }
-
-    // Update survival button logic
-    survivalBtn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Checking survival...';
-        try {
-            const response = await fetch('/term_survival', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            let msg = `Survival Outcome: ${data.outcome || (data.survived ? 'survived' : 'injured')}` +
-                      `\nRoll: ${data.roll}, Bonus: ${data.bonus}, Total: ${data.total}, Required: ${data.required}`;
-            resultDiv.textContent = msg;
-            updateTermButtonVisibility(); // Update button visibility after survival
-            setTimeout(displayTermOutcomes, 100); // Update display after a short delay
-        } catch (err) {
-            resultDiv.textContent = 'Error checking survival.';
-        }
-    });
-
-    // Commission button logic
-    commissionBtn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Checking commission...';
-        try {
-            const response = await fetch('/term_commission', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            let msg = `Commission Outcome: ${data.success ? 'commissioned' : 'not commissioned'}` +
-                      `\nRoll: ${data.roll}, Bonus: ${data.modifier}, Total: ${data.total}, Required: ${data.target}`;
-            resultDiv.textContent = msg;
-            updateTermButtonVisibility(); // Update button visibility after commission
-            setTimeout(displayTermOutcomes, 100); // Update display after a short delay
-        } catch (err) {
-            resultDiv.textContent = 'Error checking commission.';
-        }
-    });
-
-    // Promotion button logic
-    promotionBtn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Checking promotion...';
-        try {
-            const response = await fetch('/term_promotion', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            let msg = `Promotion Outcome: ${data.success ? 'promoted' : 'not promoted'}` +
-                      `\nRoll: ${data.roll}, Bonus: ${data.modifier}, Total: ${data.total}, Required: ${data.target}`;
-            resultDiv.textContent = msg;
-            updateTermButtonVisibility(); // Update button visibility after promotion
-            setTimeout(displayTermOutcomes, 100); // Update display after a short delay
-        } catch (err) {
-            resultDiv.textContent = 'Error checking promotion.';
-        }
-    });
-
-    // Update showTermSection to also update button visibility and display outcomes
-    function showTermSection() {
-        fetch('/term_info')
-            .then(res => res.json())
-            .then(data => {
-                if (data.term_ordinal) {
-                    termTitle.textContent = `${data.term_ordinal.charAt(0).toUpperCase() + data.term_ordinal.slice(1)} Term`;
-                } else {
-                    termTitle.textContent = 'Term';
-                }
-                termSection.style.display = 'block';
-                updateTermButtonVisibility(); // Update button visibility when showing term section
-                displayTermOutcomes(); // Display any existing outcomes
-            });
-    }
-
-    function hideTermSection() {
-        termSection.style.display = 'none';
-    }
-
+    // Update updateButtonVisibility to hide/disable buttons if no character
     function updateButtonVisibility() {
+        if (!window.lastStatusData || !window.lastStatusData.name) {
+            updateCharacteristicButtons([], false);
+            if (attributeDiv) attributeDiv.style.display = 'none';
+            if (serviceDiv) serviceDiv.style.display = 'none';
+            if (termSection) termSection.style.display = 'none';
+            return;
+        }
         if (serviceAssigned) {
-            attributeDiv.style.display = 'none';
-            serviceDiv.style.display = 'none';
-            showTermSection();
+            if (attributeDiv) attributeDiv.style.display = 'none';
+            if (serviceDiv) serviceDiv.style.display = 'none';
+            if (termSection) termSection.style.display = 'block';
         } else if (revealed.length === 6) {
-            attributeDiv.style.display = 'none';
-            serviceDiv.style.display = 'block';
-            hideTermSection();
+            if (attributeDiv) attributeDiv.style.display = 'none';
+            if (serviceDiv) serviceDiv.style.display = 'block';
+            if (termSection) termSection.style.display = 'none';
         } else {
-            attributeDiv.style.display = 'block';
-            serviceDiv.style.display = 'none';
-            hideTermSection();
+            if (attributeDiv) attributeDiv.style.display = 'block';
+            if (serviceDiv) serviceDiv.style.display = 'none';
+            if (termSection) termSection.style.display = 'none';
         }
     }
 
-    btn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Creating character...';
-        uppDisplay.textContent = '';
-        summaryDiv.textContent = '';
-        attributeDiv.style.display = 'block';
-        serviceDiv.style.display = 'none';
+    // --- Event Handlers ---
+
+    if (btn) btn.addEventListener('click', async function() {
         revealed = [];
         serviceAssigned = false;
-        hideTermSection();
+        updateButtonVisibility();
         try {
             const response = await fetch('/create_character', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            characterName = data.name;
-            characterAge = data.age;
-            summaryDiv.textContent = `Name: ${characterName} | Age: ${characterAge}`;
-            resultDiv.textContent = `Character created!`;
-            uppDisplay.textContent = '';
-            updateButtonVisibility();
+            refreshAllUI();
         } catch (err) {
-            resultDiv.textContent = 'Error creating character.';
+            alert('Error creating character.');
         }
     });
 
-    deleteBtn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Deleting character...';
-        uppDisplay.textContent = '';
-        summaryDiv.textContent = '';
-        attributeDiv.style.display = 'block';
-        serviceDiv.style.display = 'none';
+    if (deleteBtn) deleteBtn.addEventListener('click', async function() {
         revealed = [];
         serviceAssigned = false;
-        hideTermSection();
+        updateButtonVisibility();
         try {
             const response = await fetch('/delete_character', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            if (data.deleted) {
-                resultDiv.textContent = 'Character deleted.';
-            } else {
-                resultDiv.textContent = 'No character to delete.';
-            }
+            // Clear all UI fields
+            [charTitle, charName, charService, charRank, charUPP, charAge, charTerms, charCash, charStarship, charWeapons, charTAS].forEach(el => { if (el) el.textContent = ''; });
+            [currentTerm, survivalOutcome, commissioningOutcome, promotionOutcome, termSkillsEligibility, commissionSkillsEligibility, promotionSkillsEligibility, ageingEffects, reenlistmentOutcome].forEach(el => { if (el) el.textContent = ''; });
+            const logDiv = document.getElementById('term-outcome-log');
+            if (logDiv) logDiv.innerHTML = '';
+            updateCharacteristicButtons([], false);
+            window.lastStatusData = null;
+            // Hide attribute, service, and term sections
+            if (attributeDiv) attributeDiv.style.display = 'none';
+            if (serviceDiv) serviceDiv.style.display = 'none';
+            if (termSection) termSection.style.display = 'none';
         } catch (err) {
-            resultDiv.textContent = 'Error deleting character.';
+            // No message shown
         }
     });
 
+    for (const [key, btn] of Object.entries(attrButtons)) {
+        if (btn) btn.addEventListener('click', function() {
+            revealCharacteristic(key);
+        });
+    }
+
+    // In revealCharacteristic, handle 400 error gracefully
     async function revealCharacteristic(characteristic) {
-        resultDiv.textContent = '';
         try {
             const response = await fetch('/reveal_characteristic', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ characteristic })
             });
-            if (!response.ok) throw new Error('Network response was not ok');
+            if (!response.ok) {
+                if (response.status === 400) {
+                    // No message shown
+                    return;
+                }
+                throw new Error('Network response was not ok');
+            }
+            // No message shown
             const data = await response.json();
-            uppDisplay.textContent = `UPP: ${data.upp}`;
             revealed = data.revealed;
             updateButtonVisibility();
+            updateCharacteristicButtons(revealed, true);
+            refreshAllUI();
         } catch (err) {
-            resultDiv.textContent = 'Error revealing characteristic.';
+            // No message shown
         }
     }
 
-    for (const [key, btn] of Object.entries(attrButtons)) {
-        btn.addEventListener('click', function() {
-            revealCharacteristic(key);
-        });
-    }
-
-    // Service selection logic: call backend and display outcome
     for (const [key, btn] of Object.entries(serviceButtons)) {
-        btn.addEventListener('click', async function() {
-            resultDiv.textContent = 'Attempting enlistment...';
+        if (btn) btn.addEventListener('click', async function() {
             try {
                 const response = await fetch('/attempt_enlistment', {
                     method: 'POST',
@@ -327,49 +292,72 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify({ service: serviceMap[key] })
                 });
                 if (!response.ok) throw new Error('Network response was not ok');
-                const data = await response.json();
-                let msg = `Service selected: ${data.service}\nStatus: ${data.enlistment_status}\n` +
-                          `Required Roll: ${data.required_roll}, Actual Roll: ${data.enlistment_roll}, Modifier: ${data.modifier}`;
-                if (data.enlistment_status === 'drafted') {
-                    msg += `\nDrafted to: ${data.service}`;
-                }
-                resultDiv.textContent = msg;
                 serviceAssigned = true;
                 updateButtonVisibility();
+                refreshAllUI();
             } catch (err) {
-                resultDiv.textContent = 'Error attempting enlistment.';
+                alert('Error attempting enlistment.');
             }
         });
     }
 
-    // Re-enlistment button logic
-    reenlistmentBtn.addEventListener('click', async function() {
-        resultDiv.textContent = 'Checking re-enlistment...';
+    if (survivalBtn) survivalBtn.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/term_survival', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            updateButtonVisibility();
+            refreshAllUI();
+        } catch (err) {
+            alert('Error checking survival.');
+        }
+    });
+
+    if (commissionBtn) commissionBtn.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/term_commission', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            updateButtonVisibility();
+            refreshAllUI();
+        } catch (err) {
+            alert('Error checking commission.');
+        }
+    });
+
+    if (promotionBtn) promotionBtn.addEventListener('click', async function() {
+        try {
+            const response = await fetch('/term_promotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            updateButtonVisibility();
+            refreshAllUI();
+        } catch (err) {
+            alert('Error checking promotion.');
+        }
+    });
+
+    if (reenlistmentBtn) reenlistmentBtn.addEventListener('click', async function() {
         try {
             const response = await fetch('/term_reenlistment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             if (!response.ok) throw new Error('Network response was not ok');
-            const data = await response.json();
-            let msg = `Re-enlistment Outcome: ${data.result}` +
-                      `\nSucceeded: ${data.succeeded ? 'Yes' : 'No'}` +
-                      `\nTerms Served: ${data.terms_served}` +
-                      `\nAge: ${data.age}`;
-            resultDiv.textContent = msg;
-            if (data.succeeded) {
-                // Update character summary
-                summaryDiv.textContent = `Name: ${characterName} | Age: ${data.age}`;
-                // Update term section for new term
-                setTimeout(() => {
-                    showTermSection();
-                }, 1000);
-            }
+            updateButtonVisibility();
+            refreshAllUI();
         } catch (err) {
-            resultDiv.textContent = 'Error checking re-enlistment.';
+            alert('Error checking re-enlistment.');
         }
     });
 
-    // Initial state
+    // Initial UI state
     updateButtonVisibility();
+    refreshAllUI();
 }); 

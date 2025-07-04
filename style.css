@@ -124,4 +124,77 @@ button:hover {
     font-size: 1.1em;
     color: #333;
     min-height: 2em;
+}
+
+/* Skills section styling */
+#skills-section {
+    margin-top: 1em;
+    padding-top: 1em;
+    border-top: 1px solid #444;
+}
+
+#skills-info {
+    margin-bottom: 0.5em;
+    font-size: 0.9em;
+    color: #90caf9;
+}
+
+#skills-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+}
+
+.skill-btn {
+    background: #4caf50 !important;
+    font-size: 0.9em !important;
+    padding: 0.5em 0.8em !important;
+}
+
+.skill-btn:hover {
+    background: #45a049 !important;
+}
+
+.permanent-record {
+    flex: 0 0 48%;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-bottom: 1em;
+    border-bottom: none;
+}
+
+.main-separator {
+    width: 100%;
+    border: 0;
+    border-top: 2px solid #1976d2;
+    margin: 0.5em 0 1em 0;
+}
+
+.term-info {
+    flex: 1 1 48%;
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-top: 0.5em;
+}
+
+#character-title, #character-name, #character-service, #character-rank, #character-upp, #character-age, #character-terms, #character-cash, #character-starship, #character-weapons, #character-tas {
+    font-size: 1.1em;
+    margin-bottom: 0.3em;
+}
+
+#skills-section > div {
+    margin-bottom: 0.2em;
+}
+
+.term-info > div {
+    margin-bottom: 0.5em;
+}
+
+@media (max-width: 900px) {
+    .main-content {
+        padding: 1em 0.5em;
+    }
+    .permanent-record, .term-info {
+        max-height: none;
+    }
 } 

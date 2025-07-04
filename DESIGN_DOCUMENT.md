@@ -72,6 +72,43 @@ Classic Traveller Character Generator - Specification
 - **Skill Table Buttons:** The number and type of skill buttons depend on the character’s eligibility (e.g., education, service, term events). Each button triggers a roll for a specific skill table and disappears once resolved.
 - **Button Visibility:** Only show buttons relevant to the current step in the term workflow. Disable or hide buttons that are not currently actionable.
 
+## Known Issues with Button Workflow
+
+Through previous development and testing, the following issues have been identified regarding the appearance and disappearance of buttons in the character generation workflow:
+
+1. **Uncertainty and Fear of Data Loss**
+   - There is hesitation to use the "Start new character" button due to uncertainty about its effects, likely because it may unexpectedly purge or overwrite data. This disrupts workflow and testing.
+2. **Post-Enlistment Button Disappearance**
+   - After enlisting in a service (e.g., Army), the UI sometimes fails to present the next actionable buttons (e.g., Survival, Commission, Promotion, Skills, etc.), causing the workflow to stall.
+3. **Button Visibility Logic Fragility**
+   - Button visibility relies on backend state. If the backend state is not updated correctly, or if the frontend does not re-fetch or re-render after state changes, the UI may hide buttons prematurely or fail to show them when needed.
+4. **Dynamic Skill Button Handling**
+   - Skill buttons are generated dynamically based on eligibility and disappear once resolved. If eligibility logic or state tracking is buggy, skill buttons may not appear/disappear as intended.
+5. **State Model Complexity**
+   - The state model is intricate, with many possible states (enlistment, survival, promotion, etc.). If state transitions are not handled robustly, the UI may present the wrong set of buttons or none at all.
+
+---
+
+## Lessons Learned: UI Robustness and Error Prevention
+
+- **Synchronize HTML and JavaScript:** Any change to the HTML structure or element IDs must be reflected in the JavaScript. Mismatches can cause runtime errors and broken UI updates.
+- **Null Checks Before DOM Manipulation:** Always check that a DOM element exists before attempting to set its properties. Use utility functions to safely update the UI.
+- **Modular UI Update Functions:** Centralize UI updates in dedicated functions (e.g., `updatePermanentRecord`, `updateTermInfo`) to ensure consistency and reduce code duplication.
+- **Automated and Manual Testing:** After any UI or state model change, perform both automated and manual tests to ensure all UI elements update as expected and no errors are thrown.
+- **Error Handling:** All asynchronous operations (e.g., fetch requests) should have robust error handling to provide user feedback and prevent silent failures.
+
+---
+
+## Progressive Characteristic Reveal and UPP Display
+
+- The application is designed to emulate the classic Traveller experience, where the player reveals each characteristic (Strength, Dexterity, Endurance, Intelligence, Education, Social) one at a time by clicking the corresponding button.
+- The backend generates all characteristics at once, but the player only sees each value as they reveal it.
+- **Each characteristic button disappears after it is clicked and that characteristic is revealed.** The UI ensures that already-revealed characteristics have their buttons hidden, both immediately after clicking and on any UI refresh.
+- The Universal Personality Profile (UPP) is only displayed once all six characteristics have been revealed. Until then, the UPP field is shown as '------'.
+- This approach preserves the suspense and engagement of rolling up a character, even though the backend logic is deterministic.
+- The frontend enforces this by checking the 'revealed' array from the backend and only displaying the UPP when its length is 6.
+- **The bottom half of the UI (term info area) now displays a log of the most recent survival, commission, and promotion rolls/results.** This log includes the roll, modifiers, totals, required values, and outcome for each step, and updates as the workflow progresses. The log is basic and does not include emojis, and is visible in the term info area.
+
 ## 1. Project Overview
 
 The Traveller Character Generator is a web-based application designed to guide users through the process of creating a character for the 1981 'Classic Traveller' science fiction role-playing game. The generator supports users through the initial character creation, career progression, and mustering out, culminating in a downloadable character sheet.
@@ -174,3 +211,22 @@ The application state and routing are governed by a state model, which ensures t
 - [x] Implement JSON-based state persistence
 - [ ] Enable character sheet download functionality
 - [ ] Testing and user feedback 
+
+## AI Code Generation Pre-Check List
+
+Before applying any AI-generated code changes, the following checks must be performed to avoid introducing instability into the build:
+
+1. **Button Workflow Consistency**
+   - Ensure that all buttons appear and disappear according to the current state of the character generation workflow. No step should leave the user without actionable buttons unless the workflow is complete.
+2. **State Synchronization**
+   - Verify that frontend and backend state are always synchronized after any action that changes state. The UI must re-fetch and re-render as needed.
+3. **Data Safety**
+   - Confirm that starting a new character or deleting a character does not result in unintended data loss or leave the app in an inconsistent state.
+4. **Dynamic Button Generation**
+   - Test that dynamically generated buttons (e.g., skill buttons) appear and disappear as intended for all relevant states and eligibility conditions.
+5. **State Transition Robustness**
+   - Check that all possible state transitions (including edge cases) are handled, and the UI always presents the correct set of controls.
+6. **Manual and Automated Testing**
+   - Require at least one manual test pass and, where possible, automated tests for all UI state transitions and button workflows before merging changes.
+
+--- 
